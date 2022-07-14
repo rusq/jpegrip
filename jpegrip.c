@@ -13,22 +13,23 @@
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
 
-#include "log.h"
-#include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
+#include "log.h"
 
 #define BUF_SIZE 8192
 
 // our lovely markers
+#define MARKER 0xff
 #define IMAGE_START 0xd8 // start of jpeg image
 #define IMAGE_END 0xd9   // end of image
-#define PAD_CHAR 0xff
 
 #define CODE_ERROR 0
 #define CODE_OK 1
@@ -37,15 +38,19 @@
 #define MAX_FNAME 260
 #endif
 
-int gSuspect;
-int gFound;       // in jpeg_file
-int gFound_start; // found start
-int gFound_end;   // found end (ready for extraction);
+#define NOT_FOUND 1
+
+struct search_state {
+    int gSuspect;
+    int gFound;       // in jpeg_file
+    int gFound_start; // found start
+    int gFound_end;   // found end (ready for extraction)
+};
 
 // char* jname;
 
-int findjpeg(unsigned char *buffer, int bytes_read);
-int extract(const int hInFile, const uint32_t fileNum, uint64_t start, uint64_t end);
+int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read);
+int extract(const int hInFile, const uint32_t fileCount, uint64_t start, uint64_t end);
 
 int main(int argc, char **argv) {
     int hSource;
@@ -55,8 +60,9 @@ int main(int argc, char **argv) {
     uint64_t offset_end = 0;
 
     unsigned char *buffer; // file data buffer
-    int find_result;
+    int reverse_offset;
     uint32_t file_count = 0;
+    struct search_state ss = {0};
 
     // Parsing parameters ----------------------------------
     if (argc <= 1) {
@@ -70,16 +76,16 @@ int main(int argc, char **argv) {
             set_log_level(LOG_LEVEL_VERBOSE);
             if (strncmp(argv[2], "-vv", 3) == 0) {
                 set_log_level(LOG_LEVEL_TRACE);
-                ftracef("Trace mode.\n");
+                ltrace("Trace mode.\n");
             } else {
-                flogf("Verbose mode.\n");
+                lverbose("Verbose mode.\n");
             }
         }
     }
 
     // (Parsing parameters) --------------------------------
 
-    fprintf(stderr, "Ripping file: %s...\n", argv[1]);
+    llog("Ripping file: %s...\n", argv[1]);
 
     if ((hSource = open(argv[1], O_RDONLY)) == -1) {
         perror("open failed");
@@ -87,12 +93,9 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    flogf("\tfile \"%s\" opened successfully.\n", argv[1]);
+    lverbose("\tfile \"%s\" opened successfully.\n", argv[1]);
 
     // Initializing ----------------------------------------
-
-    gSuspect = 0;
-
     buffer = (unsigned char *) malloc(BUF_SIZE);
     // -----------------------------------------------------
 
@@ -103,36 +106,35 @@ int main(int argc, char **argv) {
             free(buffer);
             perror("read failed");
             exit(1);
-        }
-
-        if (bytes_read == 0) {
-            fprintf(stderr, "EOF reached. Extraction finished.\n");
+        } else if (bytes_read == 0) {
+            llog("EOF reached. Extraction finished.\n");
             if (file_count > 0) {
-                fprintf(stderr, "Success: %d JPEG files extracted.\n", file_count);
+                llog("Success: %d JPEG files extracted.\n", file_count);
             } else {
-                fprintf(stderr, "No JPEG files found in this file.\n");
+                llog("No JPEG files found in this file.\n");
             }
             break;
         }
 
-        find_result = findjpeg(buffer, bytes_read);
+        reverse_offset = findjpeg(&ss, buffer, bytes_read);
 
-        if ((find_result) == -1) { // Nothing found
+        if ((reverse_offset) == NOT_FOUND) {
+            /* Nothing found */
             continue;
         }
 
-        foffset = lseek(hSource, -find_result, SEEK_CUR);
-        if (gFound_start) {
+        foffset = lseek(hSource, reverse_offset, SEEK_CUR);
+        if (ss.gFound_start) {
             offset_begin = foffset - 1; //!!!!!!!!!!
-            ftracef(" START: Found IMAGE_START @ 0x%.8llX\n", offset_begin);
-            gFound_start = 0;
+            ltrace(" START: Found IMAGE_START @ 0x%.8llX\n", offset_begin);
+            ss.gFound_start = 0;
             continue;
         }
-        if (gFound_end) {
+        if (ss.gFound_end) {
             offset_end = foffset + 1;
-            ftracef(" --- END: Found IMAGE_END @ 0x%.8llX\n", offset_end - 1);
-            gFound_end = 0;
-            gFound = 0;
+            ltrace(" --- END: Found IMAGE_END @ 0x%.8llX\n", offset_end - 1);
+            ss.gFound_end = 0;
+            ss.gFound = 0;
             if (extract(hSource, file_count, offset_begin, offset_end) != CODE_OK) {
                 free(buffer);
                 close(hSource);
@@ -142,7 +144,7 @@ int main(int argc, char **argv) {
         }
 
     } while (bytes_read > 0);
-    // (Main cycle) --------------------------------------------------
+    /* (Main cycle) -------------------------------------------------- */
 
     close(hSource);
 
@@ -151,57 +153,64 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-int findjpeg(unsigned char *buffer, int bread) {
+int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
 
-    int start_offset = -1;
+    int reverse_offset = NOT_FOUND;
 
     int i = 0;
 
-    while (i <= (bread - 1)) {
-        if (*buffer != PAD_CHAR) {
+    while (i < bytes_read) {
+        if (*buffer != MARKER) {
             i++;
             buffer++;
             continue;
         }
         i++;
         buffer++;
-        if (i >= bread) {
-            start_offset = 1;
+        if (i >= bytes_read) {
+            /* we found a marker at the end of the buffer, suspect that we
+            might have a positive match, need to tell the reader to read a new
+            buffer 1 byte back */
+            reverse_offset = -1;
             break;
         }
-        if (!gFound) {
-            if ((!gSuspect) && (*buffer == IMAGE_START)) {
-                gSuspect = 1;
+        if (!ss->gFound) {
+            if ((!ss->gSuspect) && (*buffer == IMAGE_START)) {
+                ss->gSuspect = 1;
 
-                if (i >= (bread - 5)) {
-                    gSuspect = 0;
-                    start_offset = 5;
+                if (i >= (bytes_read - 5)) {
+                    /* we are approaching the end of the buffer, and we have
+                    a suspect, we might need to reverse a bit to read the full
+                    file signature */
+                    /* reset the suspect flag, so we can start from scratch. */
+                    ss->gSuspect = 0;
+                    reverse_offset = -5;
                     break;
                 }
                 if ((*(buffer + 1) == 0xff) && (*(buffer + 2) == 0xe0) && (*(buffer + 3) == 0x00) &&
                     (*(buffer + 4) == 0x10)) {
-                    gFound_start = gFound = 1;
-                    gSuspect = 0;
-                    start_offset = bread - i;
+                    ss->gFound_start = ss->gFound = 1;
+                    ss->gSuspect = 0;
+                    reverse_offset = -(bytes_read - i);
                     break;
                 }
-                gSuspect = 0;
+                ss->gSuspect = 0;
                 break;
             }
         }
-        if (gFound) {
-            while (*buffer == PAD_CHAR) {
+        if (ss->gFound) {
+            while (*buffer == MARKER) {
                 i++;
                 buffer++;
             }
             if (*buffer == IMAGE_END) {
-                gFound_end = 1;
-                start_offset = bread - i;
+                ss->gFound_end = 1;
+                reverse_offset = -(bytes_read - i);
                 break;
             }
             if (*buffer == IMAGE_START) {
-                gFound_start = 1;
-                start_offset = bread - i;
+                ss->gFound_start = 1;
+                reverse_offset = -(bytes_read - i);
                 break;
             }
         }
@@ -209,10 +218,10 @@ int findjpeg(unsigned char *buffer, int bread) {
         i++;
     }
 
-    return start_offset;
+    return reverse_offset;
 }
 
-int extract(const int hInFile, const uint32_t fileNum, uint64_t start, uint64_t end) {
+int extract(const int hInFile, const uint32_t fileCount, uint64_t start, uint64_t end) {
     int hOutFile; /* output file handle */
     char filename[MAX_FNAME];
 
@@ -223,18 +232,18 @@ int extract(const int hInFile, const uint32_t fileNum, uint64_t start, uint64_t 
 
     uint64_t stored_pos;
 
-    if ((buf = (char *) malloc(BUF_SIZE)) == NULL) {
-        fprintf(stderr, "buffer memory allocation error\n");
+    if ((buf = (char *) malloc(BUF_SIZE)) == 0) {
+        llog("buffer memory allocation error\n");
         return 1;
     }
 
-    sprintf(filename, "jpg%08d.jpg", fileNum);
-    flogf("\tWriting file: `%s' (%llu bytes)\n", filename, end - start);
+    sprintf(filename, "jpg%08d.jpg", fileCount);
+    lverbose("\tWriting file: `%s' (%llu bytes)\n", filename, end - start);
 
     numbuffs = (int) (end - start) / BUF_SIZE;
     remainer = (int) (end - start) % BUF_SIZE;
 
-    ftracef("\t\tnumbuffs=%d,remainer=%d\n", numbuffs, remainer);
+    ltrace("\t\tnumbuffs=%d,remainer=%d\n", numbuffs, remainer);
 
     if ((hOutFile = open(filename, O_WRONLY | O_CREAT | O_TRUNC,
                          S_IREAD | S_IWRITE | S_IRGRP | S_IROTH)) == -1) {
@@ -245,7 +254,7 @@ int extract(const int hInFile, const uint32_t fileNum, uint64_t start, uint64_t 
 
     stored_pos = lseek(hInFile, 0, SEEK_CUR); // Savig file position
     // Saving ------------------------------------------------
-    ftracef("\t\tWriting numbuffs...\n");
+    ltrace("\t\tWriting numbuffs...\n");
     lseek(hInFile, start, SEEK_SET);
     if (numbuffs) {
         for (i = 0; i < numbuffs; i++) {
@@ -260,7 +269,7 @@ int extract(const int hInFile, const uint32_t fileNum, uint64_t start, uint64_t 
         }
     }
 
-    ftracef("\t\tWriting remainer...");
+    ltrace("\t\tWriting remainer...");
     read(hInFile, buf, remainer);
     write(hOutFile, buf, remainer);
 

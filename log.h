@@ -6,7 +6,9 @@
 #define LOG_LEVEL_TRACE 2
 
 void set_log_level(int mode);
-void flogf(const char *fmt, ...);
-void ftracef(const char *fmt, ...);
+
+void llog(const char *fmt, ...);
+void lverbose(const char *fmt, ...);
+void ltrace(const char *fmt, ...);
 
 #endif /* __JR_LOG */
