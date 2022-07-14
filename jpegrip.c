@@ -103,8 +103,9 @@ int main(int argc, char **argv) {
     do {
         bytes_read = read(hSource, buffer, BUF_SIZE);
         if (bytes_read == -1) {
-            free(buffer);
             perror("read failed");
+            free(buffer);
+            close(hSource);
             exit(1);
         } else if (bytes_read == 0) {
             llog("EOF reached. Extraction finished.\n");
@@ -146,11 +147,9 @@ int main(int argc, char **argv) {
     } while (bytes_read > 0);
     /* (Main cycle) -------------------------------------------------- */
 
+    free(buffer);
     close(hSource);
 
-    free(buffer);
-
-    return 0;
 }
 
 int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
