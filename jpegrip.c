@@ -13,6 +13,7 @@
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
 
+#include "log.h"
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -21,7 +22,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "log.h"
 
 #define BUF_SIZE 8192
 
@@ -37,8 +37,6 @@
 #define MAX_FNAME 260
 #endif
 
-unsigned long int gFileCount; // for extraction
-
 int gSuspect;
 int gFound;       // in jpeg_file
 int gFound_start; // found start
@@ -46,11 +44,11 @@ int gFound_end;   // found end (ready for extraction);
 
 // char* jname;
 
-int findjpeg(const unsigned char *buffer, int bytes_read);
-int extract(u_int64_t start, u_int64_t end, const int infile);
+int findjpeg(unsigned char *buffer, int bytes_read);
+int extract(const int hInFile, const int fileNum, u_int64_t start, u_int64_t end);
 
 int main(int argc, char **argv) {
-    int file;
+    int hSource;
     int bytes_read; // Number of bytes read
     u_int64_t foffset = 0;
     u_int64_t offset_begin = 0;
@@ -58,6 +56,7 @@ int main(int argc, char **argv) {
 
     unsigned char *buffer;
     int find_result;
+    int file_count = 0;
 
     // Parsing parameters ----------------------------------
     if (argc <= 1) {
@@ -82,7 +81,7 @@ int main(int argc, char **argv) {
 
     fprintf(stderr, "Ripping file: %s...\n", argv[1]);
 
-    if ((file = open(argv[1], O_RDONLY)) == -1) {
+    if ((hSource = open(argv[1], O_RDONLY)) == -1) {
         perror("open failed");
         free(buffer);
         exit(1);
@@ -91,7 +90,7 @@ int main(int argc, char **argv) {
     flogf("\tfile \"%s\" opened successfully.\n", argv[1]);
 
     // Initializing ----------------------------------------
-    gFileCount = 0;
+
     gSuspect = 0;
 
     buffer = (unsigned char *) malloc(BUF_SIZE);
@@ -99,7 +98,7 @@ int main(int argc, char **argv) {
 
     // Main cycle ----------------------------------------------------
     do {
-        bytes_read = read(file, buffer, BUF_SIZE);
+        bytes_read = read(hSource, buffer, BUF_SIZE);
         if (bytes_read == -1) {
             free(buffer);
             perror("read failed");
@@ -108,10 +107,11 @@ int main(int argc, char **argv) {
 
         if (bytes_read == 0) {
             fprintf(stderr, "EOF reached. Extraction finished.\n");
-            if (gFileCount)
-                fprintf(stderr, "Success: %lu JPEG files extracted.\n", gFileCount);
-            else
+            if (file_count > 0) {
+                fprintf(stderr, "Success: %lu JPEG files extracted.\n", file_count);
+            } else {
                 fprintf(stderr, "No JPEG files found in this file.\n");
+            }
             break;
         }
 
@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        foffset = lseek(file, -find_result, SEEK_CUR);
+        foffset = lseek(hSource, -find_result, SEEK_CUR);
         if (gFound_start) {
             offset_begin = foffset - 1; //!!!!!!!!!!
             ftracef(" START: Found IMAGE_START @ 0x%.8llX\n", offset_begin);
@@ -133,24 +133,25 @@ int main(int argc, char **argv) {
             ftracef(" --- END: Found IMAGE_END @ 0x%.8llX\n", offset_end - 1);
             gFound_end = 0;
             gFound = 0;
-            if (extract(offset_begin, offset_end, file) != CODE_OK) {
+            if (extract(hSource, file_count, offset_begin, offset_end) != CODE_OK) {
                 free(buffer);
-                close(file);
+                close(hSource);
                 exit(1);
             }
+            file_count++;
         }
 
     } while (bytes_read > 0);
     // (Main cycle) --------------------------------------------------
 
-    close(file);
+    close(hSource);
 
     free(buffer);
 
     return 0;
 }
 
-int findjpeg(const unsigned char *buffer, int bread) {
+int findjpeg(unsigned char *buffer, int bread) {
 
     int start_offset = -1;
 
@@ -211,23 +212,23 @@ int findjpeg(const unsigned char *buffer, int bread) {
     return start_offset;
 }
 
-int extract(u_int64_t start, u_int64_t end, const int infile) {
-    int f;
+int extract(const int hInFile, const int fileNum, u_int64_t start, u_int64_t end) {
+    int hOutFile; /* output file handle */
     char filename[MAX_FNAME];
 
     int numbuffs, remainer;
-    char *buffer;
+    char *buf;
     int i;
     int ret = CODE_ERROR;
 
     u_int64_t stored_pos;
 
-    if ((buffer = (char *) malloc(BUF_SIZE)) == NULL) {
+    if ((buf = (char *) malloc(BUF_SIZE)) == NULL) {
         fprintf(stderr, "buffer memory allocation error\n");
         return 1;
     }
 
-    sprintf(filename, "%s%08lu.jpg", "jpg", gFileCount);
+    sprintf(filename, "jpg%08d.jpg", fileNum);
     flogf("\tWriting file: `%s' (%llu bytes)\n", filename, end - start);
 
     numbuffs = (int) (end - start) / BUF_SIZE;
@@ -235,24 +236,24 @@ int extract(u_int64_t start, u_int64_t end, const int infile) {
 
     ftracef("\t\tnumbuffs=%d,remainer=%d\n", numbuffs, remainer);
 
-    if ((f = open(filename, O_WRONLY | O_CREAT | O_TRUNC,
-                  S_IREAD | S_IWRITE | S_IRGRP | S_IROTH)) == -1) {
+    if ((hOutFile = open(filename, O_WRONLY | O_CREAT | O_TRUNC,
+                         S_IREAD | S_IWRITE | S_IRGRP | S_IROTH)) == -1) {
         perror("extract(): failed to create a file");
-        free(buffer);
+        free(buf);
         return CODE_ERROR;
     }
 
-    stored_pos = lseek(infile, 0, SEEK_CUR); // Savig file position
+    stored_pos = lseek(hInFile, 0, SEEK_CUR); // Savig file position
     // Saving ------------------------------------------------
     ftracef("\t\tWriting numbuffs...\n");
-    lseek(infile, start, SEEK_SET);
+    lseek(hInFile, start, SEEK_SET);
     if (numbuffs) {
         for (i = 0; i < numbuffs; i++) {
-            if ((read(infile, buffer, BUF_SIZE)) == -1) {
+            if ((read(hInFile, buf, BUF_SIZE)) == -1) {
                 perror("extract(): read()");
                 goto cleanup;
             }
-            if ((write(f, buffer, BUF_SIZE)) == -1) {
+            if ((write(hOutFile, buf, BUF_SIZE)) == -1) {
                 perror("extract(): write()");
                 goto cleanup;
             }
@@ -260,17 +261,16 @@ int extract(u_int64_t start, u_int64_t end, const int infile) {
     }
 
     ftracef("\t\tWriting remainer...");
-    read(infile, buffer, remainer);
-    write(f, buffer, remainer);
+    read(hInFile, buf, remainer);
+    write(hOutFile, buf, remainer);
 
     // (Saving) ----------------------------------------------
-    gFileCount++;
 
-    lseek(infile, stored_pos, SEEK_SET);
+    lseek(hInFile, stored_pos, SEEK_SET);
 
     ret = CODE_OK;
 cleanup:
-    close(f);
-    free(buffer);
+    close(hOutFile);
+    free(buf);
     return ret;
 }
