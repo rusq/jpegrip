@@ -4,3 +4,6 @@ jpegrip
 *.jpeg
 mess.bin
 *.log
+notes.md
+x86_*
+arm_*

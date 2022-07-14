@@ -45,18 +45,18 @@ int gFound_end;   // found end (ready for extraction);
 // char* jname;
 
 int findjpeg(unsigned char *buffer, int bytes_read);
-int extract(const int hInFile, const int fileNum, u_int64_t start, u_int64_t end);
+int extract(const int hInFile, const uint32_t fileNum, uint64_t start, uint64_t end);
 
 int main(int argc, char **argv) {
     int hSource;
     int bytes_read; // Number of bytes read
-    u_int64_t foffset = 0;
-    u_int64_t offset_begin = 0;
-    u_int64_t offset_end = 0;
+    uint64_t foffset = 0;
+    uint64_t offset_begin = 0;
+    uint64_t offset_end = 0;
 
-    unsigned char *buffer;
+    unsigned char *buffer; // file data buffer
     int find_result;
-    int file_count = 0;
+    uint32_t file_count = 0;
 
     // Parsing parameters ----------------------------------
     if (argc <= 1) {
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
         if (bytes_read == 0) {
             fprintf(stderr, "EOF reached. Extraction finished.\n");
             if (file_count > 0) {
-                fprintf(stderr, "Success: %lu JPEG files extracted.\n", file_count);
+                fprintf(stderr, "Success: %d JPEG files extracted.\n", file_count);
             } else {
                 fprintf(stderr, "No JPEG files found in this file.\n");
             }
@@ -212,7 +212,7 @@ int findjpeg(unsigned char *buffer, int bread) {
     return start_offset;
 }
 
-int extract(const int hInFile, const int fileNum, u_int64_t start, u_int64_t end) {
+int extract(const int hInFile, const uint32_t fileNum, uint64_t start, uint64_t end) {
     int hOutFile; /* output file handle */
     char filename[MAX_FNAME];
 
@@ -221,7 +221,7 @@ int extract(const int hInFile, const int fileNum, u_int64_t start, u_int64_t end
     int i;
     int ret = CODE_ERROR;
 
-    u_int64_t stored_pos;
+    uint64_t stored_pos;
 
     if ((buf = (char *) malloc(BUF_SIZE)) == NULL) {
         fprintf(stderr, "buffer memory allocation error\n");
