@@ -50,10 +50,11 @@ struct search_state {
 const char jpeg_signature[5] = {0xd8, 0xff, 0xe0, 0x00, 0x10}; /* jpeg signature we're looking for */
 
 int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read);
-int extract(const int hInFile, const uint32_t fileCount, uint64_t start, uint64_t end);
+int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end);
 
-int main(int argc, char **argv) {
-    int hSource;
+/* rip scans through the open file hSource, and extracts all jpeg files found
+in it.  It will return the number of files extracted, or -1 on error */
+int rip(const int hSource) {
     int bytes_read; // Number of bytes read
     uint64_t foffset = 0;
     uint64_t offset_begin = 0;
@@ -61,57 +62,19 @@ int main(int argc, char **argv) {
 
     unsigned char *buffer; // file data buffer
     int reverse_offset;
-    uint32_t file_count = 0;
+    int file_count = 0;
     struct search_state ss = {0};
 
-    // Parsing parameters ----------------------------------
-    if (argc <= 1) {
-        printf("Usage: %s <mess.ext> [-v|-vv]\n", argv[0]);
-        printf("\t-v\t- verbose mode\n\t-vv\t- very verbose mode\n");
-        exit(1);
-    }
-
-    if (argc == 3) {
-        if (strncmp(argv[2], "-v", 2) == 0) {
-            set_log_level(LOG_LEVEL_VERBOSE);
-            if (strncmp(argv[2], "-vv", 3) == 0) {
-                set_log_level(LOG_LEVEL_TRACE);
-                ltrace("Trace mode.\n");
-            } else {
-                lverbose("Verbose mode.\n");
-            }
-        }
-    }
-
-    llog("Ripping file: %s...\n", argv[1]);
-
-    if ((hSource = open(argv[1], O_RDONLY)) == -1) {
-        perror("open failed");
-        free(buffer);
-        exit(1);
-    }
-
-    lverbose("\tfile \"%s\" opened successfully.\n", argv[1]);
-
-    // Initializing ----------------------------------------
     buffer = (unsigned char *) malloc(BUF_SIZE);
-    // -----------------------------------------------------
-
     // Main cycle ----------------------------------------------------
     do {
         bytes_read = read(hSource, buffer, BUF_SIZE);
         if (bytes_read == -1) {
             perror("read failed");
             free(buffer);
-            close(hSource);
-            exit(1);
+            return -1;
         } else if (bytes_read == 0) {
             llog("EOF reached. Extraction finished.\n");
-            if (file_count > 0) {
-                llog("Success: %d JPEG files extracted.\n", file_count);
-            } else {
-                llog("No JPEG files found in this file.\n");
-            }
             break;
         }
 
@@ -128,31 +91,25 @@ int main(int argc, char **argv) {
             llog(" START: Found IMAGE_START @ 0x%.8llX\n", offset_begin);
             ss.bFound_start = 0;
             continue;
-        }
-        if (ss.bFound_end) {
+        } else if (ss.bFound_end) {
             offset_end = foffset;
             ltrace(" --- END: Found IMAGE_END @ 0x%.8llX\n", offset_end - 1);
             ss.bFound_end = 0;
             ss.bFound = 0;
             if (extract(hSource, file_count, offset_begin, offset_end) != CODE_OK) {
                 free(buffer);
-                close(hSource);
-                exit(1);
+                return -1;
             }
             file_count++;
         }
-
     } while (bytes_read > 0);
-    /* (Main cycle) -------------------------------------------------- */
 
     free(buffer);
-    close(hSource);
+    return file_count;
 }
 
 int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
-
     int reverse_offset = NOT_FOUND;
-
     int i = 0;
 
     while (i < bytes_read) {
@@ -212,14 +169,15 @@ int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
     return reverse_offset;
 }
 
-int extract(const int hInFile, const uint32_t fileCount, uint64_t start, uint64_t end) {
+/* extract extracts the portion of the file hInFile into a file with a generated
+name, having some suffix and a sequence in its filename */
+int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end) {
     int hOutFile; /* output file handle */
     char filename[MAX_FNAME];
-
     int numbuffs, remainer;
-    char *buf;
     int i;
     int ret = CODE_ERROR;
+    char *buf;
 
     uint64_t stored_pos;
 
@@ -228,7 +186,7 @@ int extract(const int hInFile, const uint32_t fileCount, uint64_t start, uint64_
         return 1;
     }
 
-    sprintf(filename, "jpg%08d.jpg", fileCount);
+    sprintf(filename, "jpg%08d.jpg", sequence);
     lverbose("\tWriting file: `%s' (%llu bytes)\n", filename, end - start);
 
     numbuffs = (int) (end - start) / BUF_SIZE;

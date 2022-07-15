@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-SRC=jpegrip.c log.c
+SRC=main.c jpegrip.c log.c
 
 CFLAGS=-g
 
