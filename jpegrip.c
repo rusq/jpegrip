@@ -83,8 +83,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    // (Parsing parameters) --------------------------------
-
     llog("Ripping file: %s...\n", argv[1]);
 
     if ((hSource = open(argv[1], O_RDONLY)) == -1) {
@@ -149,7 +147,6 @@ int main(int argc, char **argv) {
 
     free(buffer);
     close(hSource);
-
 }
 
 int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
@@ -192,7 +189,7 @@ int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
                     ss->bSuspect = 0;
                     // reverse_offset = -(bytes_read - i);
                     // break;
-                    return -(bytes_read - i+1);
+                    return -(bytes_read - i + 1);
                 }
                 ss->bSuspect = 0;
                 break;
@@ -205,7 +202,7 @@ int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
             }
             if (*buffer == IMAGE_END) {
                 ss->bFound_end = 1;
-                reverse_offset = -(bytes_read - i-1);
+                reverse_offset = -(bytes_read - i - 1);
                 break;
             }
         }
@@ -265,8 +262,14 @@ int extract(const int hInFile, const uint32_t fileCount, uint64_t start, uint64_
     }
 
     ltrace("\t\tWriting remainer...");
-    read(hInFile, buf, remainer);
-    write(hOutFile, buf, remainer);
+    if ((read(hInFile, buf, remainer)) == -1) {
+        perror("source read error");
+        goto cleanup;
+    }
+    if ((write(hOutFile, buf, remainer)) == -1) {
+        perror("target write error");
+        goto cleanup;
+    }
 
     // (Saving) ----------------------------------------------
 
