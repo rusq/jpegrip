@@ -1,3 +1,10 @@
+/*
+ * JPEG the Ripper
+ * Programme for ripping out JPEG files out of a mess
+ *
+ * Copyright 2005 by Rustam Gilyazov (github: @rusq)
+ * May be distributed under the GNU General Public License
+ */
 #include <stdarg.h>
 #include <stdio.h>
 #include "log.h"
