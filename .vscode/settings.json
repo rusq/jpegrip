@@ -11,6 +11,8 @@
         "tuple": "c",
         "unordered_map": "c",
         "algorithm": "c",
-        "functional": "c"
+        "functional": "c",
+        "unistd.h": "c",
+        "_off_t.h": "c"
     }
 }

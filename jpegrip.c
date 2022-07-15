@@ -47,7 +47,7 @@ struct search_state {
     int bFound_end;   // found end (ready for extraction)
 };
 
-// char* jname;
+const char jpeg_signature[5] = {0xd8, 0xff, 0xe0, 0x00, 0x10}; /* jpeg signature we're looking for */
 
 int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read);
 int extract(const int hInFile, const uint32_t fileCount, uint64_t start, uint64_t end);
@@ -183,8 +183,7 @@ int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
                     reverse_offset = -5;
                     break;
                 }
-                if ((*(buffer + 1) == 0xff) && (*(buffer + 2) == 0xe0) && (*(buffer + 3) == 0x00) &&
-                    (*(buffer + 4) == 0x10)) {
+                if ((memcmp(buffer, &jpeg_signature, sizeof(jpeg_signature))) == 0) {
                     ss->bFound_start = ss->bFound = 1;
                     ss->bSuspect = 0;
                     // reverse_offset = -(bytes_read - i);
