@@ -9,10 +9,6 @@
  * May be distributed under the GNU General Public License
  */
 
-#define _LARGEFILE_SOURCE
-#define _LARGEFILE64_SOURCE
-#define _FILE_OFFSET_BITS 64
-
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +18,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include "compat.h"
 #include "log.h"
 
 #define BUF_SIZE 8192
@@ -33,10 +30,6 @@
 
 #define CODE_ERROR 0
 #define CODE_OK 1
-
-#ifndef MAX_FNAME
-#define MAX_FNAME 260
-#endif
 
 #define NOT_FOUND 1
 
@@ -55,17 +48,18 @@ int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end)
 /* rip scans through the open file hSource, and extracts all jpeg files found
 in it.  It will return the number of files extracted, or -1 on error */
 int rip(const int hSource) {
-    int bytes_read; /* Number of bytes read */
     uint64_t foffset = 0;
     uint64_t offset_begin = 0;
     uint64_t offset_end = 0;
 
-    unsigned char *buffer; /* file data buffer */
-    int reverse_offset;
+    int reverse_offset = 0;
+    int bytes_read = 0; /* Number of bytes read */
     int file_count = 0;
     struct search_state ss = {0};
-
+    
+    unsigned char *buffer; /* file data buffer */
     buffer = (unsigned char *) malloc(BUF_SIZE);
+
     /* Main cycle ---------------------------------------------------- */
     do {
         bytes_read = read(hSource, buffer, BUF_SIZE);
