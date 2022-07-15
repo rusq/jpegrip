@@ -40,18 +40,18 @@ struct search_state {
     int bFound_end;   /* found end (ready for extraction) */
 };
 
-const char jpeg_signature[5] = {0xd8, 0xff, 0xe0, 0x00,
-                                0x10}; /* jpeg signature we're looking for */
+const unsigned char jpeg_signature[5] = {0xd8, 0xff, 0xe0, 0x00,
+                                         0x10}; /* jpeg signature we're looking for */
 
 int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read);
-int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end);
+int extract(const int hInFile, const int sequence, offset_t start, offset_t end);
 
 /* rip_jpeg scans through the open file hSource, and extracts all jpeg files
 found in it.  It will return the number of files extracted, or -1 on error */
 int rip_jpeg(const int hSource) {
-    uint64_t foffset = 0;
-    uint64_t offset_begin = 0;
-    uint64_t offset_end = 0;
+    offset_t foffset = 0;
+    offset_t offset_begin = 0;
+    offset_t offset_end = 0;
 
     int reverse_offset = 0;
     int bytes_read = 0; /* Number of bytes read */
@@ -164,7 +164,7 @@ int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
 
 /* extract extracts the portion of the file hInFile into a file with a generated
 name, having some suffix and a sequence in its filename */
-int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end) {
+int extract(const int hInFile, const int sequence, offset_t start, offset_t end) {
     int hOutFile; /* output file handle */
     char filename[MAX_FNAME];
     int numbuffs, remainer;
@@ -172,7 +172,7 @@ int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end)
     int ret = CODE_ERROR;
     char *buf;
 
-    uint64_t stored_pos;
+    offset_t stored_pos;
 
     if ((buf = (char *) malloc(BUF_SIZE)) == 0) {
         llog("buffer memory allocation error\n");
