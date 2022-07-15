@@ -5,6 +5,12 @@
         "__tree": "c",
         "bit": "c",
         "cmath": "c",
-        "complex": "c"
+        "complex": "c",
+        "locale": "c",
+        "map": "c",
+        "tuple": "c",
+        "unordered_map": "c",
+        "algorithm": "c",
+        "functional": "c"
     }
 }

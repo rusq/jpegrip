@@ -41,10 +41,10 @@
 #define NOT_FOUND 1
 
 struct search_state {
-    int gSuspect;
-    int gFound;       // in jpeg_file
-    int gFound_start; // found start
-    int gFound_end;   // found end (ready for extraction)
+    int bSuspect;
+    int bFound;       // in jpeg_file
+    int bFound_start; // found start
+    int bFound_end;   // found end (ready for extraction)
 };
 
 // char* jname;
@@ -125,17 +125,17 @@ int main(int argc, char **argv) {
         }
 
         foffset = lseek(hSource, reverse_offset, SEEK_CUR);
-        if (ss.gFound_start) {
+        if (ss.bFound_start) {
             offset_begin = foffset - 1; //!!!!!!!!!!
-            ltrace(" START: Found IMAGE_START @ 0x%.8llX\n", offset_begin);
-            ss.gFound_start = 0;
+            llog(" START: Found IMAGE_START @ 0x%.8llX\n", offset_begin);
+            ss.bFound_start = 0;
             continue;
         }
-        if (ss.gFound_end) {
+        if (ss.bFound_end) {
             offset_end = foffset + 1;
             ltrace(" --- END: Found IMAGE_END @ 0x%.8llX\n", offset_end - 1);
-            ss.gFound_end = 0;
-            ss.gFound = 0;
+            ss.bFound_end = 0;
+            ss.bFound = 0;
             if (extract(hSource, file_count, offset_begin, offset_end) != CODE_OK) {
                 free(buffer);
                 close(hSource);
@@ -173,42 +173,42 @@ int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
             reverse_offset = -1;
             break;
         }
-        if (!ss->gFound) {
-            if ((!ss->gSuspect) && (*buffer == IMAGE_START)) {
-                ss->gSuspect = 1;
+        if (!ss->bFound) {
+            if ((!ss->bSuspect) && (*buffer == IMAGE_START)) {
+                ss->bSuspect = 1;
 
                 if (i >= (bytes_read - 5)) {
                     /* we are approaching the end of the buffer, and we have
                     a suspect, we might need to reverse a bit to read the full
                     file signature */
                     /* reset the suspect flag, so we can start from scratch. */
-                    ss->gSuspect = 0;
+                    ss->bSuspect = 0;
                     reverse_offset = -5;
                     break;
                 }
                 if ((*(buffer + 1) == 0xff) && (*(buffer + 2) == 0xe0) && (*(buffer + 3) == 0x00) &&
                     (*(buffer + 4) == 0x10)) {
-                    ss->gFound_start = ss->gFound = 1;
-                    ss->gSuspect = 0;
+                    ss->bFound_start = ss->bFound = 1;
+                    ss->bSuspect = 0;
                     reverse_offset = -(bytes_read - i);
                     break;
                 }
-                ss->gSuspect = 0;
+                ss->bSuspect = 0;
                 break;
             }
         }
-        if (ss->gFound) {
+        if (ss->bFound) {
             while (*buffer == MARKER) {
                 i++;
                 buffer++;
             }
             if (*buffer == IMAGE_END) {
-                ss->gFound_end = 1;
+                ss->bFound_end = 1;
                 reverse_offset = -(bytes_read - i);
                 break;
             }
             if (*buffer == IMAGE_START) {
-                ss->gFound_start = 1;
+                ss->bFound_start = 1;
                 reverse_offset = -(bytes_read - i);
                 break;
             }
