@@ -3,6 +3,6 @@
 
 #include <unistd.h>
 
-int rip(const int hSource);
+int rip_jpeg(const int hSource);
 
 #endif

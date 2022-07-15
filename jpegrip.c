@@ -40,14 +40,15 @@ struct search_state {
     int bFound_end;   /* found end (ready for extraction) */
 };
 
-const char jpeg_signature[5] = {0xd8, 0xff, 0xe0, 0x00, 0x10}; /* jpeg signature we're looking for */
+const char jpeg_signature[5] = {0xd8, 0xff, 0xe0, 0x00,
+                                0x10}; /* jpeg signature we're looking for */
 
 int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read);
 int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end);
 
-/* rip scans through the open file hSource, and extracts all jpeg files found
-in it.  It will return the number of files extracted, or -1 on error */
-int rip(const int hSource) {
+/* rip_jpeg scans through the open file hSource, and extracts all jpeg files
+found in it.  It will return the number of files extracted, or -1 on error */
+int rip_jpeg(const int hSource) {
     uint64_t foffset = 0;
     uint64_t offset_begin = 0;
     uint64_t offset_end = 0;
@@ -56,7 +57,7 @@ int rip(const int hSource) {
     int bytes_read = 0; /* Number of bytes read */
     int file_count = 0;
     struct search_state ss = {0};
-    
+
     unsigned char *buffer; /* file data buffer */
     buffer = (unsigned char *) malloc(BUF_SIZE);
 
@@ -87,7 +88,7 @@ int rip(const int hSource) {
             continue;
         } else if (ss.bFound_end) {
             offset_end = foffset;
-            ltrace(" --- END: Found IMAGE_END @ 0x%.8llX\n", offset_end - 1);
+            ltrace(" --- END: Found IMAGE_END @ 0x%.8llX\n", offset_end);
             ss.bFound_end = 0;
             ss.bFound = 0;
             if (extract(hSource, file_count, offset_begin, offset_end) != CODE_OK) {
@@ -210,7 +211,7 @@ int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end)
         }
     }
 
-    ltrace("\t\tWriting remainer...");
+    ltrace("\t\tWriting remainer...\n");
     if ((read(hInFile, buf, remainer)) == -1) {
         perror("source read error");
         goto cleanup;

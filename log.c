@@ -10,7 +10,7 @@ int get_log_level() { return _gLog_level; }
 
 void llog(const char *fmt, ...) {
     va_list args;
-   
+
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
