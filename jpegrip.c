@@ -126,13 +126,13 @@ int main(int argc, char **argv) {
 
         foffset = lseek(hSource, reverse_offset, SEEK_CUR);
         if (ss.bFound_start) {
-            offset_begin = foffset - 1; //!!!!!!!!!!
+            offset_begin = foffset;
             llog(" START: Found IMAGE_START @ 0x%.8llX\n", offset_begin);
             ss.bFound_start = 0;
             continue;
         }
         if (ss.bFound_end) {
-            offset_end = foffset + 1;
+            offset_end = foffset;
             ltrace(" --- END: Found IMAGE_END @ 0x%.8llX\n", offset_end - 1);
             ss.bFound_end = 0;
             ss.bFound = 0;
@@ -190,8 +190,9 @@ int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
                     (*(buffer + 4) == 0x10)) {
                     ss->bFound_start = ss->bFound = 1;
                     ss->bSuspect = 0;
-                    reverse_offset = -(bytes_read - i);
-                    break;
+                    // reverse_offset = -(bytes_read - i);
+                    // break;
+                    return -(bytes_read - i+1);
                 }
                 ss->bSuspect = 0;
                 break;
@@ -204,12 +205,7 @@ int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
             }
             if (*buffer == IMAGE_END) {
                 ss->bFound_end = 1;
-                reverse_offset = -(bytes_read - i);
-                break;
-            }
-            if (*buffer == IMAGE_START) {
-                ss->bFound_start = 1;
-                reverse_offset = -(bytes_read - i);
+                reverse_offset = -(bytes_read - i-1);
                 break;
             }
         }
