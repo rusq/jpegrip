@@ -26,10 +26,10 @@
 
 #define BUF_SIZE 8192
 
-// our lovely markers
+/* our lovely markers */
 #define MARKER 0xff
-#define IMAGE_START 0xd8 // start of jpeg image
-#define IMAGE_END 0xd9   // end of image
+#define IMAGE_START 0xd8 /* start of jpeg image */
+#define IMAGE_END 0xd9   /* end of image */
 
 #define CODE_ERROR 0
 #define CODE_OK 1
@@ -42,9 +42,9 @@
 
 struct search_state {
     int bSuspect;
-    int bFound;       // in jpeg_file
-    int bFound_start; // found start
-    int bFound_end;   // found end (ready for extraction)
+    int bFound;       /* in jpeg_file */
+    int bFound_start; /* found start */
+    int bFound_end;   /* found end (ready for extraction) */
 };
 
 const char jpeg_signature[5] = {0xd8, 0xff, 0xe0, 0x00, 0x10}; /* jpeg signature we're looking for */
@@ -55,18 +55,18 @@ int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end)
 /* rip scans through the open file hSource, and extracts all jpeg files found
 in it.  It will return the number of files extracted, or -1 on error */
 int rip(const int hSource) {
-    int bytes_read; // Number of bytes read
+    int bytes_read; /* Number of bytes read */
     uint64_t foffset = 0;
     uint64_t offset_begin = 0;
     uint64_t offset_end = 0;
 
-    unsigned char *buffer; // file data buffer
+    unsigned char *buffer; /* file data buffer */
     int reverse_offset;
     int file_count = 0;
     struct search_state ss = {0};
 
     buffer = (unsigned char *) malloc(BUF_SIZE);
-    // Main cycle ----------------------------------------------------
+    /* Main cycle ---------------------------------------------------- */
     do {
         bytes_read = read(hSource, buffer, BUF_SIZE);
         if (bytes_read == -1) {
@@ -143,8 +143,6 @@ int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
                 if ((memcmp(buffer, &jpeg_signature, sizeof(jpeg_signature))) == 0) {
                     ss->bFound_start = ss->bFound = 1;
                     ss->bSuspect = 0;
-                    // reverse_offset = -(bytes_read - i);
-                    // break;
                     return -(bytes_read - i + 1);
                 }
                 ss->bSuspect = 0;
@@ -201,8 +199,8 @@ int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end)
         return CODE_ERROR;
     }
 
-    stored_pos = lseek(hInFile, 0, SEEK_CUR); // Savig file position
-    // Saving ------------------------------------------------
+    stored_pos = lseek(hInFile, 0, SEEK_CUR); /* Savig file position */
+    /* Saving ------------------------------------------------ */
     ltrace("\t\tWriting numbuffs...\n");
     lseek(hInFile, start, SEEK_SET);
     if (numbuffs) {
@@ -228,7 +226,7 @@ int extract(const int hInFile, const int sequence, uint64_t start, uint64_t end)
         goto cleanup;
     }
 
-    // (Saving) ----------------------------------------------
+    /* (Saving) ---------------------------------------------- */
 
     lseek(hInFile, stored_pos, SEEK_SET);
 

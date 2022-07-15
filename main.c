@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
 }
 
 int run(char* filename) {
-    int hSource;
+    int hSource=0;
+    int num_files = 0;
 
 
     llog("Ripping file: %s...\n", filename);
@@ -45,7 +46,7 @@ int run(char* filename) {
 
     lverbose("\tfile \"%s\" opened successfully.\n", filename);
 
-    int num_files = rip(hSource);
+    num_files = rip(hSource);
     if (num_files < 0) {
         close(hSource);
         return -1;

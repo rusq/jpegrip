@@ -2,7 +2,7 @@ SHELL=/bin/sh
 
 SRC=main.c jpegrip.c log.c
 
-CFLAGS=-g
+CFLAGS=-g -pedantic-errors -std=c89
 
 .PHONY: fmt
 
