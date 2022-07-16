@@ -15,6 +15,7 @@
         "unistd.h": "c",
         "_off_t.h": "c",
         "stdarg.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "string.h": "c"
     }
 }

@@ -8,6 +8,12 @@
 #ifndef __JR_COMPAT
 #define __JR_COMPAT
 
+#ifdef __BORLANDC__
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
@@ -29,5 +35,15 @@ typedef unsigned long offset_t;
 #define S_IWRITE 0x00
 #endif
 /* (2) END */
+
+/* (3) DOS QuickC */
+#ifndef S_IRGRP
+#define S_IRGRP 0x00
+#endif
+
+#ifndef S_IROTH
+#define S_IROTH 0x00
+#endif
+/* (3) END */
 
 #endif

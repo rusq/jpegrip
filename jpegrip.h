@@ -8,7 +8,9 @@
 #ifndef __JR_JPEGRIP
 #define __JR_JPEGRIP
 
-#include <unistd.h>
+#ifndef DOS_MODE
+/*#include <unistd.h>*/
+#endif
 
 int rip_jpeg(const int hSource);
 

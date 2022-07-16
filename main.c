@@ -7,9 +7,11 @@
  */
 #include <stdio.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <string.h>
 #include "log.h"
 #include "jpegrip.h"
+#include "compat.h"
 
 int run(char *filename);
 void usage(const char *me);
