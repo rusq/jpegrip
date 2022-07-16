@@ -12,7 +12,7 @@
 #include <io.h>
 #else
 #include <unistd.h>
-#endif
+#endif /* __BORLANDC__ */
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE

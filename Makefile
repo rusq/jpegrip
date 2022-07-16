@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-SRC=main.c jpegrip.c log.c
+SRC=main.c jpegrip2.c log.c
 
 CFLAGS=-pedantic-errors -std=c89
 

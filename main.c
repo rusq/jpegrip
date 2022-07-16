@@ -10,11 +10,11 @@
 #include <sys/stat.h>
 #include <string.h>
 #include "log.h"
-#include "jpegrip.h"
+#include "jpegrip2.h"
 #include "compat.h"
 
-int run(char *filename);
 void usage(const char *me);
+int run2(const char *filename);
 
 int main(int argc, char **argv) {
     char *filename = 0;
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (run(filename) == -1) {
+    if (run2(filename) == -1) {
         llog("there were errors");
         return 1;
     }
@@ -62,6 +62,23 @@ void usage(const char *me) {
     printf("\t-v\t- verbose mode\n\t-vv\t- very verbose mode\n");
 }
 
+int run2(const char *filename) {
+    FILE *f;
+    int num_files = 0;
+
+    if ((f = fopen(filename, "rb")) == 0) {
+        perror("error opening input file");
+        return 0;
+    }
+    num_files = rip_jpeg2(f);
+    if (num_files == -1) {
+        return -1;
+    }
+    llog("ok, files extracted: %d\n", num_files);
+    return num_files;
+}
+
+/*
 int run(char *filename) {
     int hSource = 0;
     int num_files = 0;
@@ -85,3 +102,4 @@ int run(char *filename) {
     close(hSource);
     return 0;
 }
+*/
