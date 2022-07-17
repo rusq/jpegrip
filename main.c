@@ -10,11 +10,11 @@
 #include <sys/stat.h>
 #include <string.h>
 #include "log.h"
-#include "jpegrip2.h"
+#include "jpegrip.h"
 #include "compat.h"
 
 void usage(const char *me);
-int run2(const char *filename);
+int run(const char *filename);
 
 int main(int argc, char **argv) {
     char *filename = 0;
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (run2(filename) == -1) {
+    if (run(filename) == -1) {
         llog("there were errors");
         return 1;
     }
@@ -62,44 +62,19 @@ void usage(const char *me) {
     printf("\t-v\t- verbose mode\n\t-vv\t- very verbose mode\n");
 }
 
-int run2(const char *filename) {
+int run(const char *filename) {
     FILE *f;
     int num_files = 0;
 
+    llog("Ripping file: %s...\n", filename);
     if ((f = fopen(filename, "rb")) == 0) {
         perror("error opening input file");
         return 0;
     }
-    num_files = rip_jpeg2(f);
+    num_files = rip_jpeg(f);
     if (num_files == -1) {
         return -1;
     }
-    llog("ok, files extracted: %d\n", num_files);
+    llog("%d files extracted from %s\n", num_files, filename);
     return num_files;
 }
-
-/*
-int run(char *filename) {
-    int hSource = 0;
-    int num_files = 0;
-
-    llog("Ripping file: %s...\n", filename);
-
-    if ((hSource = open(filename, O_RDONLY)) == -1) {
-        perror("open failed");
-        return -1;
-    }
-
-    lverbose("\tfile \"%s\" opened successfully.\n", filename);
-
-    num_files = rip_jpeg(hSource);
-    if (num_files < 0) {
-        close(hSource);
-        return -1;
-    }
-    llog("%d files extracted from %s\n", num_files, filename);
-
-    close(hSource);
-    return 0;
-}
-*/

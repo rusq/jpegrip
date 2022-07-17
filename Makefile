@@ -1,6 +1,7 @@
 SHELL=/bin/sh
 
-SRC=main.c jpegrip2.c log.c
+OUTPUT=jpegrip
+SRC=main.c jpegrip.c log.c
 
 CFLAGS=-pedantic-errors -std=c89
 
@@ -10,7 +11,7 @@ OS=$(shell uname)
 
 $(info building for $(OS))
 ifeq ($(OS),Darwin)
-jpegrip: x86_jpegrip arm_jpegrip
+$(OUTPUT): x86_$(OUTPUT) arm_$(OUTPUT)
 	lipo -create -output $@ $^
 
 x86_%: %.c
@@ -19,24 +20,27 @@ x86_%: %.c
 arm_%: %.c
 	cc -o $@ $^ $(CFLAGS) $(CXXFLAGS) $(LDFLAGS)
 
-x86_jpegrip: CFLAGS+=-target x86_64-apple-macos10.12
-arm_jpegrip: CFLAGS+=-target arm64-apple-macos11
+x86_$(OUTPUT): CFLAGS+=-target x86_64-apple-macos10.12
+arm_$(OUTPUT): CFLAGS+=-target arm64-apple-macos11
 
-x86_jpegrip: $(SRC)
+x86_$(OUTPUT): $(SRC)
 
-arm_jpegrip: $(SRC)
+arm_$(OUTPUT): $(SRC)
 
 clean:
-	-rm jpegrip x86_jpegrip arm_jpegrip
+	-rm $(OUTPUT) x86_$(OUTPUT) arm_$(OUTPUT)
+
+leaks: $(OUTPUT)
+	leaks --atExit -- $(OUTPUT) sample.bin
 else
-jpegrip: $(SRC)
+$(OUTPUT): $(SRC)
 endif # (OS)
 
 debug: CFLAGS+=-g
-debug: jpegrip
+debug: $(OUTPUT)
 
 docker: clean
-	docker build -t jpegrip:latest .
+	docker build -t $(OUTPUT):latest .
 
 fmt:
 	clang-format -i $(SRC) $(HDR)

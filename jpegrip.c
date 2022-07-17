@@ -1,228 +1,242 @@
-/*
- * JPEG the Ripper
- * Programme for ripping out JPEG files out of a mess
- *
- * Copyright 2005 by Rustam Gilyazov (github: @rusq)
- * May be distributed under the GNU General Public License
- */
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
 #include <string.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "compat.h"
 #include "log.h"
 
-#define BUF_SIZE 8192
+#define BUF_SIZE 16384
 
-/* our lovely markers */
-#define MARKER 0xff
-#define IMAGE_START 0xd8 /* start of jpeg image */
-#define IMAGE_END 0xd9   /* end of image */
+#define ERROR -2
+#define NOT_FOUND -3
 
-#define CODE_ERROR 0
-#define CODE_OK 1
+/* jpeg signatures we're looking for */
+const unsigned char jpeg_begin[6] = {0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10};
+const unsigned char jpeg_end[2] = {0xff, 0xd9};
 
-#define NOT_FOUND 1
-
-struct search_state {
-    int bSuspect;
-    int bFound;       /* in jpeg_file */
-    int bFound_start; /* found start */
-    int bFound_end;   /* found end (ready for extraction) */
-};
-
-const unsigned char jpeg_signature[5] = {0xd8, 0xff, 0xe0, 0x00,
-                                         0x10}; /* jpeg signature we're looking for */
-
-int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read);
-int extract(const int hInFile, const int sequence, offset_t start, offset_t end);
-
-/* rip_jpeg scans through the open file hSource, and extracts all jpeg files
-found in it.  It will return the number of files extracted, or -1 on error */
-int rip_jpeg(const int hSource) {
-    offset_t foffset = 0;
-    offset_t offset_begin = 0;
-    offset_t offset_end = 0;
-
-    int reverse_offset = 0;
-    int bytes_read = 0; /* Number of bytes read */
-    int file_count = 0;
-    struct search_state ss = {0};
-
-    unsigned char *buffer; /* file data buffer */
-    buffer = (unsigned char *) malloc(BUF_SIZE);
-
-    /* Main cycle ---------------------------------------------------- */
-    do {
-        bytes_read = read(hSource, buffer, BUF_SIZE);
-        if (bytes_read == -1) {
-            perror("read failed");
-            free(buffer);
-            return -1;
-        } else if (bytes_read == 0) {
-            llog("EOF reached. Extraction finished.\n");
-            break;
-        }
-
-        reverse_offset = findjpeg(&ss, buffer, bytes_read);
-
-        if ((reverse_offset) == NOT_FOUND) {
-            /* Nothing found */
-            continue;
-        }
-
-        foffset = lseek(hSource, reverse_offset, SEEK_CUR);
-        if (ss.bFound_start) {
-            offset_begin = foffset;
-            llog(" START: Found IMAGE_START @ 0x%.8llX\n", offset_begin);
-            ss.bFound_start = 0;
-            continue;
-        } else if (ss.bFound_end) {
-            offset_end = foffset;
-            ltrace(" --- END: Found IMAGE_END @ 0x%.8llX\n", offset_end);
-            ss.bFound_end = 0;
-            ss.bFound = 0;
-            if (extract(hSource, file_count, offset_begin, offset_end) != CODE_OK) {
-                free(buffer);
-                return -1;
-            }
-            file_count++;
-        }
-    } while (bytes_read > 0);
-
-    free(buffer);
-    return file_count;
-}
-
-int findjpeg(struct search_state *ss, unsigned char *buffer, int bytes_read) {
-    int reverse_offset = NOT_FOUND;
-    int i = 0;
-
-    while (i < bytes_read) {
-        if (*buffer != MARKER) {
-            i++;
-            buffer++;
-            continue;
-        }
-        i++;
-        buffer++;
-        if (i >= bytes_read) {
-            /* we found a marker at the end of the buffer, suspect that we
-            might have a positive match, need to tell the reader to read a new
-            buffer 1 byte back */
-            reverse_offset = -1;
-            break;
-        }
-        if (!ss->bFound) {
-            if ((!ss->bSuspect) && (*buffer == IMAGE_START)) {
-                ss->bSuspect = 1;
-
-                if (i >= (bytes_read - 5)) {
-                    /* we are approaching the end of the buffer, and we have
-                    a suspect, we might need to reverse a bit to read the full
-                    file signature */
-                    /* reset the suspect flag, so we can start from scratch. */
-                    ss->bSuspect = 0;
-                    reverse_offset = -5;
-                    break;
-                }
-                if ((memcmp(buffer, &jpeg_signature, sizeof(jpeg_signature))) == 0) {
-                    ss->bFound_start = ss->bFound = 1;
-                    ss->bSuspect = 0;
-                    return -(bytes_read - i + 1);
-                }
-                ss->bSuspect = 0;
-                break;
-            }
-        }
-        if (ss->bFound) {
-            while (*buffer == MARKER) {
-                i++;
-                buffer++;
-            }
-            if (*buffer == IMAGE_END) {
-                ss->bFound_end = 1;
-                reverse_offset = -(bytes_read - i - 1);
-                break;
-            }
-        }
-        buffer++;
-        i++;
-    }
-
-    return reverse_offset;
-}
-
-/* extract extracts the portion of the file hInFile into a file with a generated
-name, having some suffix and a sequence in its filename */
-int extract(const int hInFile, const int sequence, offset_t start, offset_t end) {
-    int hOutFile; /* output file handle */
-    char filename[MAX_FNAME];
-    int numbuffs, remainer;
+/* search_buf searches the buf of size buf_sz for the presense of byte seq of
+size seq_sz.  It will return -1 if the sequence not found, or an offset of the
+sequence in buffer (can be 0). */
+int search_buf(const unsigned char *buf, const int buf_sz, const unsigned char *seq,
+               const int seq_sz) {
     int i;
-    int ret = CODE_ERROR;
-    char *buf;
+    int offset = -1;
 
-    offset_t stored_pos;
-
-    if ((buf = (char *) malloc(BUF_SIZE)) == 0) {
-        llog("buffer memory allocation error\n");
-        return 1;
+    if (buf_sz < seq_sz) {
+        return -1;
     }
 
-    sprintf(filename, "jpg%08d.jpg", sequence);
-    lverbose("\tWriting file: `%s' (%llu bytes)\n", filename, end - start);
-
-    numbuffs = (int) (end - start) / BUF_SIZE;
-    remainer = (int) (end - start) % BUF_SIZE;
-
-    ltrace("\t\tnumbuffs=%d,remainer=%d\n", numbuffs, remainer);
-
-    if ((hOutFile = open(filename, O_WRONLY | O_CREAT | O_TRUNC,
-                         S_IREAD | S_IWRITE | S_IRGRP | S_IROTH)) == -1) {
-        perror("extract(): failed to create a file");
-        free(buf);
-        return CODE_ERROR;
-    }
-
-    stored_pos = lseek(hInFile, 0, SEEK_CUR); /* Savig file position */
-    /* Saving ------------------------------------------------ */
-    ltrace("\t\tWriting numbuffs...\n");
-    lseek(hInFile, start, SEEK_SET);
-    if (numbuffs) {
-        for (i = 0; i < numbuffs; i++) {
-            if ((read(hInFile, buf, BUF_SIZE)) == -1) {
-                perror("extract(): read()");
-                goto cleanup;
-            }
-            if ((write(hOutFile, buf, BUF_SIZE)) == -1) {
-                perror("extract(): write()");
-                goto cleanup;
-            }
+    for (i = 0; i <= (buf_sz - seq_sz); ++i) {
+        if ((memcmp((buf + i), seq, seq_sz)) == 0) {
+            offset = i;
+            break;
         }
     }
+    return offset;
+}
 
-    ltrace("\t\tWriting remainer...\n");
-    if ((read(hInFile, buf, remainer)) == -1) {
-        perror("source read error");
-        goto cleanup;
+/* search_file searches the hFile, starting at start_pos, for the presense of
+seq, that has seq_sz length.  It will return the offset of the first byte of the
+sequence in the file.  If it is unsuccessful, it will return an ERROR, or EOF,
+if end of file is encountered while searching for the sequence */
+long search_file(FILE *hFile, long start_pos, const unsigned char *seq, const int seq_sz) {
+    unsigned char *buf;
+
+    if (seq_sz == 0) {
+        llog("search_file:  zero sequence size");
+        return EOF;
     }
-    if ((write(hOutFile, buf, remainer)) == -1) {
-        perror("target write error");
-        goto cleanup;
+
+    if (fseek(hFile, start_pos, SEEK_SET) == -1) {
+        perror("search_file:  seek failed");
+        return ERROR;
     }
 
-    /* (Saving) ---------------------------------------------- */
+    if ((buf = (unsigned char *) malloc(BUF_SIZE)) == 0) {
+        perror("memory allocation error");
+        return ERROR;
+    }
 
-    lseek(hInFile, stored_pos, SEEK_SET);
+    for (;;) {
+        int bytes_read = 0;
+        int buf_offset = 0;
+        int file_pos = ftell(hFile);
 
-    ret = CODE_OK;
-cleanup:
-    close(hOutFile);
+        if ((bytes_read = fread(buf, sizeof(unsigned char), BUF_SIZE, hFile)) == 0) {
+            if (feof(hFile) || (bytes_read < seq_sz)) {
+                free(buf);
+                return EOF;
+            } else {
+                perror("search_file:  read error");
+                goto looser;
+            }
+        }
+
+        buf_offset = search_buf(buf, bytes_read, seq, seq_sz);
+        if (buf_offset != -1) {
+            free(buf);
+            /* return the offset of the finding */
+            return file_pos + buf_offset;
+        }
+
+        if (bytes_read == seq_sz) {
+            /* we have scanned the last seq_sz bytes of the file, and did not
+            find the sequence we were looking for, it does not make sense to
+            continue doing this */
+            free(buf);
+            return EOF;
+        }
+
+        /* reversing the file pointer for seq_sz bytes to make sure that
+        there's a buffer overlap, in case the sequence is on the border
+        between buffers */
+        if (fseek(hFile, -seq_sz, SEEK_CUR) == -1) {
+            perror("search_file:  seek error");
+            goto looser;
+        }
+    }
+looser:
     free(buf);
-    return ret;
+    return ERROR;
+}
+
+/* fmt_string creates a format string for format_name.  buf is the output
+buffer, and buf_sz should contain a non-zero size of the buffer buf. If it
+succeeds it returs number of bytes written to the buffer.  It will return 0 if
+it fails. */
+int fmt_string(char *buf, const int buf_sz, const char *prefix, const int digits, const char *ext) {
+    if (buf_sz == 0) {
+        llog("filename size can't be zero");
+        return -1;
+    }
+    memset(buf, 0, buf_sz);
+    /* create format string */
+    return snprintf(buf, buf_sz, "%s%%0%dld.%s", prefix, digits, ext);
+}
+
+int format_name(char *output, const int output_sz, const char *fmt, const int sequence) {
+    return snprintf(output, output_sz, fmt, sequence);
+}
+
+/* min returns the minimum value of x and y */
+int min(const int x, const int y) { return x < y ? x : y; }
+
+/* extract extracts the size chunk of data from hFile starting at start_offset,
+   and writes it to the new file which it creates.  The filename is formed by
+   sprintfing filename_fmt, and sequence.  Sample filename_fmt: "jpg%05d.jpg".
+   If the sequence is 42, then, the output filename will be "jpg00042.jpg".  It
+   returns 0 if error occurs or if there was nothing to do, EOF if we were
+   trying to read, and encountered an input file EOF (treat as an error), and
+   bytes written, if everything went well (it should equal to size).
+*/
+long extract(FILE *hFile, const char *filename, long start_offset, long size) {
+    long remain = size;
+    unsigned char *buf; /* temporary buffer */
+    FILE *f;            /* output file */
+
+    if (size == 0) {
+        llog("extract:  nothing to do");
+        return 0;
+    }
+
+    if (fseek(hFile, start_offset, SEEK_SET) == -1) {
+        perror("extract:  failed to reposition the file to start offset");
+        return 0;
+    }
+
+    if ((f = fopen(filename, "wb+")) == 0) {
+        perror("failed to create the output file");
+        return 0;
+    }
+
+    if ((buf = malloc(BUF_SIZE)) == 0) {
+        perror("extract:  failed to allocate memory");
+        goto looser;
+    }
+
+    do {
+        int bytes_read = 0, bytes_written = 0;
+        if ((bytes_read = fread(buf, sizeof(unsigned char), min(BUF_SIZE, remain), hFile)) == 0) {
+            if (feof(hFile)) {
+                free(buf);
+                fclose(f);
+                return EOF; /* attempted to read past the file end */
+            } else {
+                perror("extract:  read error");
+                goto looser;
+            }
+        }
+        if ((bytes_written = fwrite(buf, sizeof(unsigned char), bytes_read, f)) == 0) {
+            perror("extract:  write error");
+            goto looser;
+        }
+        if (bytes_read != bytes_written) {
+            llog("extract:  unexpected number of bytes written: read=%d != written=%d", bytes_read,
+                 bytes_written);
+            goto looser;
+        }
+        remain -= bytes_written;
+    } while (remain > 0);
+
+    free(buf);
+    fclose(f);
+    return size;
+looser:
+    free(buf);
+    fclose(f);
+    return 0;
+}
+
+int rip_jpeg(FILE *hFile) {
+    long num_files = 0;
+    long blob_start = 0, blob_end = 0;
+    char output_fmt[MAX_FNAME];
+
+    if (fmt_string(output_fmt, MAX_FNAME, "jpg", 8, "jpg") < 0) {
+        llog("failed to create a output format string");
+        return -1;
+    }
+
+    for (;;) {
+        char output_name[MAX_FNAME];
+        int output_file_sz = 0;
+
+        blob_start = search_file(hFile, blob_end, jpeg_begin, sizeof(jpeg_begin));
+        if (blob_start == ERROR) {
+            perror("rip_jpeg: search for jepg start");
+            return -1;
+        } else if (blob_start == EOF) {
+            return num_files;
+        }
+        llog("%8ld: found start at %08lX\n", num_files + 1, blob_start);
+
+        blob_end = search_file(hFile, blob_start + sizeof(jpeg_begin), jpeg_end, sizeof(jpeg_end));
+        if (blob_end == ERROR) {
+            perror("rip_jpeg: search for jpeg end");
+            return -1;
+        } else if (blob_start == EOF) {
+            llog("search terminated prematurely (found start at %ld, but no end)\n");
+            return num_files;
+        }
+        /* blob_end was pointing at the beginning of the sequence, we need end of it.
+         */
+        blob_end += sizeof(jpeg_end);
+        output_file_sz = blob_end - blob_start;
+
+        llog("%8ld:   found end at %08lX, detected file size: %ld\n", num_files + 1, blob_end,
+             output_file_sz);
+
+        if (format_name(output_name, MAX_FNAME, output_fmt, num_files) < 0) {
+            llog("failed to generate a filename");
+            return -1;
+        }
+        ltrace("came up with this brilliant name: %s\n", output_name);
+        if (extract(hFile, output_name, blob_start, output_file_sz) != output_file_sz) {
+            llog("error extracting %ld bytes to %s\n", output_file_sz, output_name);
+            return -1;
+        };
+
+        llog("%8ld:   written to:\t%s\n", num_files + 1, output_name);
+
+        num_files++;
+    }
 }
