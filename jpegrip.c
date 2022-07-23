@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <jpeglib.h>
 #include "compat.h"
 #include "log.h"
 
@@ -189,9 +188,11 @@ looser:
 
 /* based on https://github.com/LuaDist/libjpeg/blob/master/example.c */
 int get_jpeg_size(FILE *f) {
-	struct jpeg_decompress_struct cinfo;
-	jpeg_stdio_src(&cinfo, f);
-	jpeg_read_header(&cinfo, TRUE);
+	long current_offset;
+
+	current_offset = ftell(f);
+
+	/* determine the true ending*/
 	return 0;
 }
 

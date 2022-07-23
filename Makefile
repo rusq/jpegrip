@@ -3,11 +3,10 @@ SHELL=/bin/sh
 OUTPUT=jpegrip
 SRC=main.c jpegrip.c log.c
 
-JPEGCF=$(shell pkg-config --cflags libjpeg)
-JPEGLF=$(shell pkg-config --libs libjpeg)
+# JPEGCF=$(shell pkg-config --cflags libjpeg)
+# JPEGLF=$(shell pkg-config --libs libjpeg)
 
-CFLAGS=-pedantic-errors -std=c89 $(JPEGCF)
-LDFLAGS+=$(JPEGLF)
+CFLAGS=-pedantic-errors -std=c89
 
 .PHONY: fmt debug
 
@@ -15,15 +14,15 @@ OS=$(shell uname)
 
 $(info building for $(OS))
 ifeq ($(OS),Darwin)
-# $(OUTPUT): x86_$(OUTPUT) arm_$(OUTPUT)
-# 	lipo -create -output $@ $^
+$(OUTPUT): x86_$(OUTPUT) arm_$(OUTPUT)
+	lipo -create -output $@ $^
 
-# x86_%: %.c
-$(OUTPUT): $(SRC)
+# $(OUTPUT): $(SRC)
+x86_%: %.c
 	cc -o $@ $^ $(CFLAGS) $(CXXFLAGS) $(LDFLAGS)
 
-# arm_%: %.c
-# 	cc -o $@ $^ $(CFLAGS) $(CXXFLAGS) $(LDFLAGS)
+arm_%: %.c
+	cc -o $@ $^ $(CFLAGS) $(CXXFLAGS) $(LDFLAGS)
 
 x86_$(OUTPUT): CFLAGS+=-target x86_64-apple-macos10.12
 arm_$(OUTPUT): CFLAGS+=-target arm64-apple-macos11
