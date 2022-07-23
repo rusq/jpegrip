@@ -211,9 +211,9 @@ int rip_jpeg(FILE *hFile) {
 	}
 	llog("%8ld: found start at %08lX\n", num_files + 1, blob_start);
 
-    /* determine file size */
+	/* determine file size */
 
-    /* search for ending */
+	/* search for ending */
 	blob_end = search_file(hFile, blob_start + sizeof(jpeg_begin), jpeg_end, sizeof(jpeg_end));
 	if (blob_end == ERROR) {
 	    perror("rip_jpeg: search for jpeg end");

@@ -21,37 +21,37 @@ int main(int argc, char **argv) {
     char *verboseFlag = 0;
 
     if (argc <= 1) {
-        usage(argv[0]);
-        return 2;
+	usage(argv[0]);
+	return 2;
     }
 
     if (argv[1][0] == '-') {
-        /* determine which parameter is which */
-        if (argc == 2) {
-            /* user specified flag, but not the file */
-            usage(argv[0]);
-        }
-        verboseFlag = argv[1];
-        filename = argv[2];
+	/* determine which parameter is which */
+	if (argc == 2) {
+	    /* user specified flag, but not the file */
+	    usage(argv[0]);
+	}
+	verboseFlag = argv[1];
+	filename = argv[2];
     } else {
-        filename = argv[1];
+	filename = argv[1];
     }
 
     if (verboseFlag != 0) {
-        if (strncmp(verboseFlag, "-v", 2) == 0) {
-            set_log_level(LOG_LEVEL_VERBOSE);
-            if (strncmp(verboseFlag, "-vv", 3) == 0) {
-                set_log_level(LOG_LEVEL_TRACE);
-                ltrace("Trace mode.\n");
-            } else {
-                lverbose("Verbose mode.\n");
-            }
-        }
+	if (strncmp(verboseFlag, "-v", 2) == 0) {
+	    set_log_level(LOG_LEVEL_VERBOSE);
+	    if (strncmp(verboseFlag, "-vv", 3) == 0) {
+		set_log_level(LOG_LEVEL_TRACE);
+		ltrace("Trace mode.\n");
+	    } else {
+		lverbose("Verbose mode.\n");
+	    }
+	}
     }
 
     if (run(filename) == -1) {
-        llog("there were errors");
-        return 1;
+	llog("there were errors");
+	return 1;
     }
     return 0;
 }
@@ -68,12 +68,12 @@ int run(const char *filename) {
 
     llog("Ripping file: %s...\n", filename);
     if ((f = fopen(filename, "rb")) == 0) {
-        perror("error opening input file");
-        return 0;
+	perror("error opening input file");
+	return 0;
     }
     num_files = rip_jpeg(f);
     if (num_files == -1) {
-        return -1;
+	return -1;
     }
     llog("%d files extracted from %s\n", num_files, filename);
     return num_files;

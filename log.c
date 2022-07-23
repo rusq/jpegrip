@@ -27,7 +27,7 @@ void lverbose(const char *fmt, ...) {
     va_list args;
 
     if (_gLog_level < LOG_LEVEL_VERBOSE) {
-        return;
+	return;
     }
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
@@ -38,7 +38,7 @@ void ltrace(const char *fmt, ...) {
     va_list args;
 
     if (_gLog_level < LOG_LEVEL_TRACE) {
-        return;
+	return;
     }
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
