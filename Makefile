@@ -3,7 +3,11 @@ SHELL=/bin/sh
 OUTPUT=jpegrip
 SRC=main.c jpegrip.c log.c
 
-CFLAGS=-pedantic-errors -std=c89
+JPEGCF=$(shell pkg-config --cflags libjpeg)
+JPEGLF=$(shell pkg-config --libs libjpeg)
+
+CFLAGS=-pedantic-errors -std=c89 $(JPEGCF)
+LDFLAGS+=$(JPEGLF)
 
 .PHONY: fmt debug
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <jpeglib.h>
 #include "compat.h"
 #include "log.h"
 
@@ -17,19 +18,19 @@ const unsigned char jpeg_end[2] = {0xff, 0xd9};
 size seq_sz.  It will return -1 if the sequence not found, or an offset of the
 sequence in buffer (can be 0). */
 int search_buf(const unsigned char *buf, const int buf_sz, const unsigned char *seq,
-               const int seq_sz) {
+	       const int seq_sz) {
     int i;
     int offset = -1;
 
     if (buf_sz < seq_sz) {
-        return -1;
+	return -1;
     }
 
     for (i = 0; i <= (buf_sz - seq_sz); ++i) {
-        if ((memcmp((buf + i), seq, seq_sz)) == 0) {
-            offset = i;
-            break;
-        }
+	if ((memcmp((buf + i), seq, seq_sz)) == 0) {
+	    offset = i;
+	    break;
+	}
     }
     return offset;
 }
@@ -42,57 +43,57 @@ long search_file(FILE *hFile, long start_pos, const unsigned char *seq, const in
     unsigned char *buf;
 
     if (seq_sz == 0) {
-        llog("search_file:  zero sequence size");
-        return EOF;
+	llog("search_file:  zero sequence size");
+	return EOF;
     }
 
     if (fseek(hFile, start_pos, SEEK_SET) == -1) {
-        perror("search_file:  seek failed");
-        return ERROR;
+	perror("search_file:  seek failed");
+	return ERROR;
     }
 
-    if ((buf = (unsigned char *) malloc(BUF_SIZE)) == 0) {
-        perror("memory allocation error");
-        return ERROR;
+    if ((buf = malloc(BUF_SIZE)) == 0) {
+	perror("memory allocation error");
+	return ERROR;
     }
 
     for (;;) {
-        int bytes_read = 0;
-        int buf_offset = 0;
-        int file_pos = ftell(hFile);
+	int bytes_read = 0;
+	int buf_offset = 0;
+	int file_pos = ftell(hFile);
 
-        if ((bytes_read = fread(buf, sizeof(unsigned char), BUF_SIZE, hFile)) == 0) {
-            if (feof(hFile) || (bytes_read < seq_sz)) {
-                free(buf);
-                return EOF;
-            } else {
-                perror("search_file:  read error");
-                goto looser;
-            }
-        }
+	if ((bytes_read = fread(buf, sizeof(unsigned char), BUF_SIZE, hFile)) == 0) {
+	    if (feof(hFile) || (bytes_read < seq_sz)) {
+		free(buf);
+		return EOF;
+	    } else {
+		perror("search_file:  read error");
+		goto looser;
+	    }
+	}
 
-        buf_offset = search_buf(buf, bytes_read, seq, seq_sz);
-        if (buf_offset != -1) {
-            free(buf);
-            /* return the offset of the finding */
-            return file_pos + buf_offset;
-        }
+	buf_offset = search_buf(buf, bytes_read, seq, seq_sz);
+	if (buf_offset != -1) {
+	    free(buf);
+	    /* return the offset of the finding */
+	    return file_pos + buf_offset;
+	}
 
-        if (bytes_read == seq_sz) {
-            /* we have scanned the last seq_sz bytes of the file, and did not
-            find the sequence we were looking for, it does not make sense to
-            continue doing this */
-            free(buf);
-            return EOF;
-        }
+	if (bytes_read == seq_sz) {
+	    /* we have scanned the last seq_sz bytes of the file, and did not
+	    find the sequence we were looking for, it does not make sense to
+	    continue doing this */
+	    free(buf);
+	    return EOF;
+	}
 
-        /* reversing the file pointer for seq_sz bytes to make sure that
-        there's a buffer overlap, in case the sequence is on the border
-        between buffers */
-        if (fseek(hFile, -seq_sz, SEEK_CUR) == -1) {
-            perror("search_file:  seek error");
-            goto looser;
-        }
+	/* reversing the file pointer for seq_sz bytes to make sure that
+	there's a buffer overlap, in case the sequence is on the border
+	between buffers */
+	if (fseek(hFile, -seq_sz, SEEK_CUR) == -1) {
+	    perror("search_file:  seek error");
+	    goto looser;
+	}
     }
 looser:
     free(buf);
@@ -105,8 +106,8 @@ succeeds it returs number of bytes written to the buffer.  It will return 0 if
 it fails. */
 int fmt_string(char *buf, const int buf_sz, const char *prefix, const int digits, const char *ext) {
     if (buf_sz == 0) {
-        llog("filename size can't be zero");
-        return -1;
+	llog("filename size can't be zero");
+	return -1;
     }
     memset(buf, 0, buf_sz);
     /* create format string */
@@ -131,50 +132,50 @@ int min(const int x, const int y) { return x < y ? x : y; }
 long extract(FILE *hFile, const char *filename, long start_offset, long size) {
     long remain = size;
     unsigned char *buf; /* temporary buffer */
-    FILE *f;            /* output file */
+    FILE *f;		/* output file */
 
     if (size == 0) {
-        llog("extract:  nothing to do");
-        return 0;
+	llog("extract:  nothing to do");
+	return 0;
     }
 
     if (fseek(hFile, start_offset, SEEK_SET) == -1) {
-        perror("extract:  failed to reposition the file to start offset");
-        return 0;
+	perror("extract:  failed to reposition the file to start offset");
+	return 0;
     }
 
     if ((f = fopen(filename, "wb+")) == 0) {
-        perror("failed to create the output file");
-        return 0;
+	perror("failed to create the output file");
+	return 0;
     }
 
     if ((buf = malloc(BUF_SIZE)) == 0) {
-        perror("extract:  failed to allocate memory");
-        goto looser;
+	perror("extract:  failed to allocate memory");
+	goto looser;
     }
 
     do {
-        int bytes_read = 0, bytes_written = 0;
-        if ((bytes_read = fread(buf, sizeof(unsigned char), min(BUF_SIZE, remain), hFile)) == 0) {
-            if (feof(hFile)) {
-                free(buf);
-                fclose(f);
-                return EOF; /* attempted to read past the file end */
-            } else {
-                perror("extract:  read error");
-                goto looser;
-            }
-        }
-        if ((bytes_written = fwrite(buf, sizeof(unsigned char), bytes_read, f)) == 0) {
-            perror("extract:  write error");
-            goto looser;
-        }
-        if (bytes_read != bytes_written) {
-            llog("extract:  unexpected number of bytes written: read=%d != written=%d", bytes_read,
-                 bytes_written);
-            goto looser;
-        }
-        remain -= bytes_written;
+	int bytes_read = 0, bytes_written = 0;
+	if ((bytes_read = fread(buf, sizeof(unsigned char), min(BUF_SIZE, remain), hFile)) == 0) {
+	    if (feof(hFile)) {
+		free(buf);
+		fclose(f);
+		return EOF; /* attempted to read past the file end */
+	    } else {
+		perror("extract:  read error");
+		goto looser;
+	    }
+	}
+	if ((bytes_written = fwrite(buf, sizeof(unsigned char), bytes_read, f)) == 0) {
+	    perror("extract:  write error");
+	    goto looser;
+	}
+	if (bytes_read != bytes_written) {
+	    llog("extract:  unexpected number of bytes written: read=%d != written=%d", bytes_read,
+		 bytes_written);
+	    goto looser;
+	}
+	remain -= bytes_written;
     } while (remain > 0);
 
     free(buf);
@@ -192,51 +193,55 @@ int rip_jpeg(FILE *hFile) {
     char output_fmt[MAX_FNAME];
 
     if (fmt_string(output_fmt, MAX_FNAME, "jpg", 8, "jpg") < 0) {
-        llog("failed to create a output format string");
-        return -1;
+	llog("failed to create a output format string");
+	return -1;
     }
 
     for (;;) {
-        char output_name[MAX_FNAME];
-        int output_file_sz = 0;
+	char output_name[MAX_FNAME];
+	int output_file_sz = 0;
 
-        blob_start = search_file(hFile, blob_end, jpeg_begin, sizeof(jpeg_begin));
-        if (blob_start == ERROR) {
-            perror("rip_jpeg: search for jepg start");
-            return -1;
-        } else if (blob_start == EOF) {
-            return num_files;
-        }
-        llog("%8ld: found start at %08lX\n", num_files + 1, blob_start);
+	/* search for start */
+	blob_start = search_file(hFile, blob_end, jpeg_begin, sizeof(jpeg_begin));
+	if (blob_start == ERROR) {
+	    perror("rip_jpeg: search for jepg start");
+	    return -1;
+	} else if (blob_start == EOF) {
+	    return num_files;
+	}
+	llog("%8ld: found start at %08lX\n", num_files + 1, blob_start);
 
-        blob_end = search_file(hFile, blob_start + sizeof(jpeg_begin), jpeg_end, sizeof(jpeg_end));
-        if (blob_end == ERROR) {
-            perror("rip_jpeg: search for jpeg end");
-            return -1;
-        } else if (blob_start == EOF) {
-            llog("search terminated prematurely (found start at %ld, but no end)\n");
-            return num_files;
-        }
-        /* blob_end was pointing at the beginning of the sequence, we need end of it.
-         */
-        blob_end += sizeof(jpeg_end);
-        output_file_sz = blob_end - blob_start;
+    /* determine file size */
 
-        llog("%8ld:   found end at %08lX, detected file size: %ld\n", num_files + 1, blob_end,
-             output_file_sz);
+    /* search for ending */
+	blob_end = search_file(hFile, blob_start + sizeof(jpeg_begin), jpeg_end, sizeof(jpeg_end));
+	if (blob_end == ERROR) {
+	    perror("rip_jpeg: search for jpeg end");
+	    return -1;
+	} else if (blob_start == EOF) {
+	    llog("search terminated prematurely (found start at %ld, but no end)\n");
+	    return num_files;
+	}
+	/* blob_end was pointing at the beginning of the sequence, we need end of it.
+	 */
+	blob_end += sizeof(jpeg_end);
+	output_file_sz = blob_end - blob_start;
 
-        if (format_name(output_name, MAX_FNAME, output_fmt, num_files) < 0) {
-            llog("failed to generate a filename");
-            return -1;
-        }
-        ltrace("came up with this brilliant name: %s\n", output_name);
-        if (extract(hFile, output_name, blob_start, output_file_sz) != output_file_sz) {
-            llog("error extracting %ld bytes to %s\n", output_file_sz, output_name);
-            return -1;
-        };
+	llog("%8ld:   found end at %08lX, detected file size: %ld\n", num_files + 1, blob_end,
+	     output_file_sz);
 
-        llog("%8ld:   written to:\t%s\n", num_files + 1, output_name);
+	if (format_name(output_name, MAX_FNAME, output_fmt, num_files) < 0) {
+	    llog("failed to generate a filename");
+	    return -1;
+	}
+	ltrace("came up with this brilliant name: %s\n", output_name);
+	if (extract(hFile, output_name, blob_start, output_file_sz) != output_file_sz) {
+	    llog("error extracting %ld bytes to %s\n", output_file_sz, output_name);
+	    return -1;
+	};
 
-        num_files++;
+	llog("%8ld:   written to:\t%s\n", num_files + 1, output_name);
+
+	num_files++;
     }
 }
