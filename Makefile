@@ -15,14 +15,15 @@ OS=$(shell uname)
 
 $(info building for $(OS))
 ifeq ($(OS),Darwin)
-$(OUTPUT): x86_$(OUTPUT) arm_$(OUTPUT)
-	lipo -create -output $@ $^
+# $(OUTPUT): x86_$(OUTPUT) arm_$(OUTPUT)
+# 	lipo -create -output $@ $^
 
-x86_%: %.c
+# x86_%: %.c
+$(OUTPUT): $(SRC)
 	cc -o $@ $^ $(CFLAGS) $(CXXFLAGS) $(LDFLAGS)
 
-arm_%: %.c
-	cc -o $@ $^ $(CFLAGS) $(CXXFLAGS) $(LDFLAGS)
+# arm_%: %.c
+# 	cc -o $@ $^ $(CFLAGS) $(CXXFLAGS) $(LDFLAGS)
 
 x86_$(OUTPUT): CFLAGS+=-target x86_64-apple-macos10.12
 arm_$(OUTPUT): CFLAGS+=-target arm64-apple-macos11
