@@ -24,10 +24,10 @@ Windows: untested.
 ## Features
 
 - Scans arbitrary size files and extracts JPEG files, filenames are generated
-  sequentially, it does not restore the original file names (see [1]).
+  sequentially, it does not restore the original file names (see NOTE 1).
 - Reads and correctly determines the file size based on the JPEG file header
   data, i.e. if the JPEG file has a thumbnail data, it will successfully detect
-  it (see [2])
+  it (see NOTE 2).
 
 NOTES
 1. It detects the JPEG file merely by the JPEG file signature, in order to
