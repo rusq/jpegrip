@@ -72,7 +72,7 @@ size_t _tag_names_sz = sizeof(_tag_names) / sizeof(_tag_name);
 /* tag_name returns the tag name string for the tag.  If the tag is not found it
 returns NULL */
 char *tag_name(unsigned char tag) {
-	int i;
+	size_t i;
 	for (i = 0; i < _tag_names_sz; i++) {
 		if (_tag_names[i].tag == tag) {
 			return _tag_names[i].name;

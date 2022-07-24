@@ -46,9 +46,9 @@ const unsigned char jpeg_end[2] = {0xff, 0xd9};
 /* search_buf searches the buf of size buf_sz for the presense of byte seq of
 size seq_sz.  It will return -1 if the sequence not found, or an offset of the
 sequence in buffer (can be 0). */
-int search_buf(const unsigned char *buf, const int buf_sz, const unsigned char *seq,
-			   const int seq_sz) {
-	int i;
+int search_buf(const unsigned char *buf, const size_t buf_sz, const unsigned char *seq,
+			   const size_t seq_sz) {
+	size_t i;
 	int offset = -1;
 
 	if (buf_sz < seq_sz) {
@@ -68,7 +68,7 @@ int search_buf(const unsigned char *buf, const int buf_sz, const unsigned char *
 seq, that has seq_sz length.  It will return the offset of the first byte of the
 sequence in the file.  If it is unsuccessful, it will return an ERROR, or EOF,
 if end of file is encountered while searching for the sequence */
-long search_file(FILE *hFile, long start_pos, const unsigned char *seq, const int seq_sz) {
+long search_file(FILE *hFile, long start_pos, const unsigned char *seq, const size_t seq_sz) {
 	unsigned char *buf;
 
 	if (seq_sz == 0) {
@@ -87,7 +87,7 @@ long search_file(FILE *hFile, long start_pos, const unsigned char *seq, const in
 	}
 
 	for (;;) {
-		int bytes_read = 0;
+		size_t bytes_read = 0;
 		int buf_offset = 0;
 		int file_pos = ftell(hFile);
 
@@ -119,7 +119,7 @@ long search_file(FILE *hFile, long start_pos, const unsigned char *seq, const in
 		/* reversing the file pointer for seq_sz bytes to make sure that
 		there's a buffer overlap, in case the sequence is on the border
 		between buffers */
-		if (fseek(hFile, -seq_sz, SEEK_CUR) == -1) {
+		if (fseek(hFile, -(int)seq_sz, SEEK_CUR) == -1) {
 			perror("search_file:  seek error");
 			goto looser;
 		}
@@ -148,7 +148,9 @@ int format_name(char *output, const int output_sz, const char *fmt, const int se
 }
 
 /* min returns the minimum value of x and y */
+#ifndef min
 int min(const int x, const int y) { return x < y ? x : y; }
+#endif
 
 /* extract extracts the size chunk of data from hFile starting at start_offset,
    and writes it to the new file which it creates.  The filename is formed by
@@ -159,7 +161,7 @@ int min(const int x, const int y) { return x < y ? x : y; }
    bytes written, if everything went well (it should equal to size).
 */
 long extract(FILE *hFile, const char *filename, long start_offset, long size) {
-	long remain = size;
+	size_t remain = size;
 	unsigned char *buf; /* temporary buffer */
 	FILE *f;			/* output file */
 
@@ -184,9 +186,9 @@ long extract(FILE *hFile, const char *filename, long start_offset, long size) {
 	}
 
 	do {
-		int bytes_read = 0, bytes_written = 0;
+		size_t bytes_read = 0, bytes_written = 0;
 		if ((bytes_read = fread(buf, sizeof(unsigned char), min(BUF_SIZE, remain), hFile)) == 0) {
-			if (feof(hFile)) {
+			if (feof(hFile) != 0) {
 				free(buf);
 				fclose(f);
 				return EOF; /* attempted to read past the file end */

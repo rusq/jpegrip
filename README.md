@@ -19,7 +19,7 @@ Linux/MacOS:
 make jpegrip
 ```
 
-Windows: untested.
+Tested and working on windows.
 
 ## Features
 
