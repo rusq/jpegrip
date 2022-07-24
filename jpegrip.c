@@ -46,7 +46,7 @@ const unsigned char jpeg_end[2] = {0xff, 0xd9};
 /* search_buf searches the buf of size buf_sz for the presense of byte seq of
 size seq_sz.  It will return -1 if the sequence not found, or an offset of the
 sequence in buffer (can be 0). */
-int search_buf(const unsigned char *buf, const int buf_sz, const unsigned char *seq,
+int search_buf(const unsigned char *buf, const size_t buf_sz, const unsigned char *seq,
 			   const int seq_sz) {
 	int i;
 	int offset = -1;
@@ -87,7 +87,7 @@ long search_file(FILE *hFile, long start_pos, const unsigned char *seq, const in
 	}
 
 	for (;;) {
-		int bytes_read = 0;
+		size_t bytes_read = 0;
 		int buf_offset = 0;
 		int file_pos = ftell(hFile);
 
@@ -148,7 +148,9 @@ int format_name(char *output, const int output_sz, const char *fmt, const int se
 }
 
 /* min returns the minimum value of x and y */
+#ifndef min
 int min(const int x, const int y) { return x < y ? x : y; }
+#endif
 
 /* extract extracts the size chunk of data from hFile starting at start_offset,
    and writes it to the new file which it creates.  The filename is formed by
@@ -159,7 +161,7 @@ int min(const int x, const int y) { return x < y ? x : y; }
    bytes written, if everything went well (it should equal to size).
 */
 long extract(FILE *hFile, const char *filename, long start_offset, long size) {
-	long remain = size;
+	size_t remain = size;
 	unsigned char *buf; /* temporary buffer */
 	FILE *f;			/* output file */
 
@@ -184,7 +186,7 @@ long extract(FILE *hFile, const char *filename, long start_offset, long size) {
 	}
 
 	do {
-		int bytes_read = 0, bytes_written = 0;
+		size_t bytes_read = 0, bytes_written = 0;
 		if ((bytes_read = fread(buf, sizeof(unsigned char), min(BUF_SIZE, remain), hFile)) == 0) {
 			if (feof(hFile)) {
 				free(buf);

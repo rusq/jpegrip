@@ -9,3 +9,6 @@ notes.md
 x86_*
 arm_*
 jpeghdr
+*.exe
+out
+.vs
