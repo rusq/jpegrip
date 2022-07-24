@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define _JR_JPEGRIP2
 #include <stdio.h>
 
+#define JPEGRIP_VERSION "v0.3.1"
+
 int rip_jpeg(FILE *hFile);
 
 #endif

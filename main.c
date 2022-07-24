@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
 }
 
 void usage(const char *me) {
-	printf("jpegrip - find and extract jpeg files in binary files.\n");
+	printf("jpegrip %s - find and extract jpeg files in binary files.\n", JPEGRIP_VERSION);
 	printf("Usage: %s [-v|-vv] <mess.ext>\n", me);
 	printf("\t-v\t- verbose mode\n\t-vv\t- very verbose mode\n");
 }
