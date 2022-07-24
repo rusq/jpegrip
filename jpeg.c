@@ -86,10 +86,16 @@ int read_section_size(section_size_ptr ss, FILE *f) {
 	return RET_OK;
 }
 
-/* jpeg_hdr_size returns the header size in bytes */
-int jpeg_hdr_size(FILE *f) {
+/* jpeg_hdr_size returns the header size in bytes.  It will return RET_ERROR on error. */
+long jpeg_hdr_size(FILE *f) {
 	struct jpeg_marker jt;
 	struct section_size ss;
+	long initial_pos;
+
+	if ((initial_pos = ftell(f)) == -1) {
+		perror("failed to determine current file position");
+		return RET_ERROR;
+	}
 
 	/* read the first tag */
 	if (!read_marker(&jt, f)) {
@@ -143,6 +149,5 @@ int jpeg_hdr_size(FILE *f) {
 		}
 	}
 
-	/* current file position - sizeof(last_marker) */
-	return ftell(f) - sizeof(struct jpeg_marker);
+	return ftell(f) - sizeof(struct jpeg_marker) - initial_pos;
 }

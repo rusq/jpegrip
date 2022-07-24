@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "compat.h"
+#include "jpeg.h"
 #include "log.h"
 
 #define BUF_SIZE 16384
@@ -186,16 +187,6 @@ looser:
 	return 0;
 }
 
-/* based on https://github.com/LuaDist/libjpeg/blob/master/example.c */
-int get_jpeg_size(FILE *f) {
-	long current_offset;
-
-	current_offset = ftell(f);
-
-	/* determine the true ending*/
-	return 0;
-}
-
 int rip_jpeg(FILE *hFile) {
 	long num_files = 0;
 	long blob_start = 0, blob_end = 0;
@@ -209,6 +200,7 @@ int rip_jpeg(FILE *hFile) {
 	for (;;) {
 		char output_name[MAX_FNAME];
 		int output_file_sz = 0;
+		int hdr_sz = 0;
 
 		/* search for start */
 		blob_start = search_file(hFile, blob_end, jpeg_begin, sizeof(jpeg_begin));
@@ -220,10 +212,18 @@ int rip_jpeg(FILE *hFile) {
 		}
 		llog("%8ld: found start at %08lX\n", num_files + 1, blob_start);
 
-		get_jpeg_size(hFile);
+		/* reset the file position and try to determine the header size */
+		if (fseek(hFile, blob_start, SEEK_SET) == -1) {
+			perror("seek failed");
+			return -1;
+		}
+		if ((hdr_sz = jpeg_hdr_size(hFile)) == RET_ERROR) {
+			llog("unable to determine header size\n");
+			return -1;
+		}
 
 		/* search for ending */
-		blob_end = search_file(hFile, blob_start + sizeof(jpeg_begin), jpeg_end, sizeof(jpeg_end));
+		blob_end = search_file(hFile, blob_start + hdr_sz, jpeg_end, sizeof(jpeg_end));
 		if (blob_end == ERROR) {
 			perror("rip_jpeg: search for jpeg end");
 			return -1;

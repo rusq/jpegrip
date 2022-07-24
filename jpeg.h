@@ -9,7 +9,7 @@
 #endif
 
 /* jpeg_hdr_size reads the JPEG file and returns the header size, that can be
-certainly skipped. On error, it returns 0. */
-int jpeg_hdr_size(FILE *f);
+certainly skipped. On error, it returns RET_ERROR (0). */
+long jpeg_hdr_size(FILE *f);
 
 #endif

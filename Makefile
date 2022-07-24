@@ -1,7 +1,7 @@
 SHELL=/bin/sh
 
 OUTPUT=jpegrip
-JPEGRIP_SRC=main.c jpegrip.c log.c
+JPEGRIP_SRC=main.c jpegrip.c log.c jpeg.c
 JPEGHDR_SRC=jpeghdr.c jpeg.c log.c
 
 
