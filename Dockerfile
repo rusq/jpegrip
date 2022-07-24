@@ -1,3 +1,4 @@
+# JPEG the Ripper.
 FROM frolvlad/alpine-gcc as build
 
 WORKDIR /build

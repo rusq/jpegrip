@@ -1,49 +1,43 @@
 /*
- * JPEG the Ripper
- * Programme for ripping out JPEG files out of a mess
- *
- * Copyright 2005 by Rustam Gilyazov (github: @rusq)
- * May be distributed under the GNU General Public License
- */
+JPEG the Ripper
+Copyright (c) 2005,2022 github.com/rusq
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 #ifndef __JR_COMPAT
 #define __JR_COMPAT
-
-#ifdef __BORLANDC__
-#include <io.h>
-#else
-#include <unistd.h>
-#endif /* __BORLANDC__ */
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
-
-typedef unsigned long offset_t;
 
 /* (1) MAX_FNAME is the maxium size of the filename, defined in DOS/WINDOWS */
 #ifndef MAX_FNAME
 #define MAX_FNAME 260
 #endif
 /* (1) END */
-
-/* (2) gcc on linux seems to not understand these */
-#ifndef S_IREAD
-#define S_IREAD 0x00
-#endif
-
-#ifndef S_IWRITE
-#define S_IWRITE 0x00
-#endif
-/* (2) END */
-
-/* (3) DOS QuickC */
-#ifndef S_IRGRP
-#define S_IRGRP 0x00
-#endif
-
-#ifndef S_IROTH
-#define S_IROTH 0x00
-#endif
-/* (3) END */
 
 #endif
