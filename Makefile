@@ -15,6 +15,9 @@ OS=$(shell uname)
 $(info building for $(OS))
 ifeq ($(OS),Darwin)
 $(OUTPUT): x86_$(OUTPUT) arm_$(OUTPUT)
+jpeghdr: x86_jpeghdr arm_jpeghdr
+
+%: x86_% arm_%
 	lipo -create -output $@ $^
 
 # $(OUTPUT): $(SRC)
