@@ -29,6 +29,7 @@
         "unordered_set": "c",
         "vector": "c",
         "iterator": "c",
-        "utility": "c"
+        "utility": "c",
+        "jpeglib.h": "c"
     }
 }
