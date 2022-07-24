@@ -1,4 +1,4 @@
-from frolvlad/alpine-gcc as build
+FROM frolvlad/alpine-gcc as build
 
 WORKDIR /build
 

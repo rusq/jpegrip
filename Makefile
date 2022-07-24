@@ -1,6 +1,7 @@
 SHELL=/bin/sh
 
-OUTPUT=jpegrip
+JPEGRIP=jpegrip
+JPEGHDR=jpeghdr
 JPEGRIP_SRC=main.c jpegrip.c log.c jpeg.c
 JPEGHDR_SRC=jpeghdr.c jpeg.c log.c
 
@@ -30,32 +31,33 @@ arm_%: CFLAGS+=-target arm64-apple-macos11
 $(info building for $(OS))
 ifeq ($(OS),Darwin)
 
-$(OUTPUT): x86_$(OUTPUT) arm_$(OUTPUT)
-jpeghdr: x86_jpeghdr arm_jpeghdr
+$(JPEGRIP): x86_$(JPEGRIP) arm_$(JPEGRIP)
+$(JPEGHDR): x86_$(JPEGHDR) arm_$(JPEGHDR)
 
-x86_$(OUTPUT): $(JPEGRIP_SRC)
-arm_$(OUTPUT): $(JPEGRIP_SRC)
-x86_jpeghdr: $(JPEGHDR_SRC)
-arm_jpeghdr: $(JPEGHDR_SRC)
+x86_$(JPEGRIP): $(JPEGRIP_SRC)
+arm_$(JPEGRIP): $(JPEGRIP_SRC)
+x86_$(JPEGHDR): $(JPEGHDR_SRC)
+arm_$(JPEGHDR): $(JPEGHDR_SRC)
 
 clean:
-	-rm $(OUTPUT) x86_$(OUTPUT) arm_$(OUTPUT)
-leaks: $(OUTPUT)
-	leaks --atExit -- $(OUTPUT) sample.bin
+	-rm $(JPEGRIP) x86_$(JPEGRIP) arm_$(JPEGRIP) $(JPEGHDR) x86_$(JPEGHDR) arm_$(JPEGHDR) *.jpg
+	-rm -rf *.dSYM
+leaks: $(JPEGRIP)
+	leaks -atExit -- $(CURDIR)/$(JPEGRIP) sample.bin
 
 else
 
-$(OUTPUT): $(JPEGRIP_SRC)
+$(JPEGRIP): $(JPEGRIP_SRC)
 clean:
-	-rm $(OUTPUT)
+	-rm $(JPEGRIP)
 
 endif # (OS)
 
 debug: CFLAGS+=-g
-debug: $(OUTPUT)
+debug: $(JPEGRIP)
 
 docker: clean
-	docker build -t $(OUTPUT):latest .
+	docker build -t $(JPEGRIP):latest .
 
 fmt:
 	clang-format -i $(JPEGRIP_SRC) $(HDR)
