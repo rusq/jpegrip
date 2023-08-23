@@ -31,11 +31,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include "log.h"
 
+int get_log_level(void);
+
 int _gLog_level = LOG_LEVEL_NORMAL;
 
 void set_log_level(int mode) { _gLog_level = mode; }
 
-int get_log_level() { return _gLog_level; }
+int get_log_level(void) { return _gLog_level; }
 
 void llog(const char *fmt, ...) {
 	va_list args;
