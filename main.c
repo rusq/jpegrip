@@ -39,35 +39,30 @@ int run(const char *filename);
 
 int main(int argc, char **argv) {
 	char *filename = 0;
-	char *verboseFlag = 0;
+	int i=0;
 
 	if (argc <= 1) {
-		usage(argv[0]);
-		return 2;
+		goto looser;
 	}
 
-	if (argv[1][0] == '-') {
-		/* determine which parameter is which */
-		if (argc == 2) {
-			/* user specified flag, but not the file */
-			usage(argv[0]);
-		}
-		verboseFlag = argv[1];
-		filename = argv[2];
-	} else {
-		filename = argv[1];
-	}
-
-	if (verboseFlag != 0) {
-		if (strncmp(verboseFlag, "-v", 2) == 0) {
-			set_log_level(LOG_LEVEL_VERBOSE);
-			if (strncmp(verboseFlag, "-vv", 3) == 0) {
-				set_log_level(LOG_LEVEL_TRACE);
-				ltrace("Trace mode.\n");
-			} else {
-				lverbose("Verbose mode.\n");
+	for (i=1; i < argc; i++) {
+		if (argv[i][0] == '-') {
+			if (argv[i][1] == 'v') {
+				set_log_level(LOG_LEVEL_VERBOSE);
+				if (argv[i][2] == 'v') {
+					set_log_level(LOG_LEVEL_TRACE);
+					ltrace("Trace mode");
+				} else {
+					lverbose("Verbose mode");
+				}
 			}
+		} else {
+			filename = argv[i];
 		}
+	}
+
+	if (filename == NULL) {
+		goto looser;
 	}
 
 	if (run(filename) == -1) {
@@ -75,6 +70,10 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	return 0;
+
+looser:
+	usage(argv[0]);
+	return 2;
 }
 
 void usage(const char *me) {
