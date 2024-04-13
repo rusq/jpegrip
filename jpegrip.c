@@ -140,11 +140,19 @@ int fmt_string(char *buf, const int buf_sz, const char *prefix, const int digits
 	}
 	memset(buf, 0, buf_sz);
 	/* create format string */
+#ifdef MSDOS
+	return sprintf(buf, "%s%%0%dld.%s", prefix, digits, ext);
+#else
 	return snprintf(buf, buf_sz, "%s%%0%dld.%s", prefix, digits, ext);
+#endif
 }
 
 int format_name(char *output, const int output_sz, const char *fmt, const int sequence) {
+#ifdef MSDOS
+	return sprintf(output, fmt, sequence);
+#else
 	return snprintf(output, output_sz, fmt, sequence);
+#endif
 }
 
 /* min returns the minimum value of x and y */
@@ -219,7 +227,7 @@ looser:
 }
 
 int rip_jpeg(FILE *hFile) {
-	long num_files = 0;
+	int num_files = 0;
 	long blob_start = 0, blob_end = 0;
 	char output_fmt[MAX_FNAME];
 
