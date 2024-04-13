@@ -31,5 +31,6 @@
         "iterator": "c",
         "utility": "c",
         "jpeglib.h": "c"
-    }
+    },
+    "cmake.configureOnOpen": true
 }

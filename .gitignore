@@ -12,3 +12,5 @@ jpeghdr
 *.exe
 out
 .vs
+*.obj
+build
