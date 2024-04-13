@@ -223,7 +223,7 @@ int rip_jpeg(FILE *hFile) {
 	long blob_start = 0, blob_end = 0;
 	char output_fmt[MAX_FNAME];
 
-	if (fmt_string(output_fmt, MAX_FNAME, "jpg", 8, "jpg") < 0) {
+	if (fmt_string(output_fmt, MAX_FNAME, "j", 7, "jpg") < 0) {
 		llog("failed to create a output format string");
 		return -1;
 	}

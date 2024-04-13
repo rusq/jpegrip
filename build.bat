@@ -1,2 +1,2 @@
 @echo off
-cl main.c jpegrip.c jpeg.c log.c
+cl /Fe:jpegrip.exe main.c jpegrip.c jpeg.c log.c

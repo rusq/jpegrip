@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <stdio.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <string.h>
 #include "log.h"
 #include "jpegrip.h"
