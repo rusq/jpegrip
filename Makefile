@@ -11,7 +11,7 @@ JPEGHDR_SRC=jpeghdr.c jpeg.c log.c
 
 CFLAGS=-pedantic-errors -std=c89
 
-.PHONY: fmt debug
+.PHONY: fmt debug test test-clean
 
 OS=$(shell uname)
 
@@ -61,3 +61,23 @@ docker: clean
 
 fmt:
 	clang-format -i $(JPEGRIP_SRC) $(HDR)
+
+# ---- test targets (native arch only, no lipo) ----
+TEST_BINS = test/test_search_buf test/test_fmt
+TEST_COMMON = jpegrip.c jpeg.c log.c
+
+test/test_search_buf: test/test_search_buf.c $(TEST_COMMON)
+	cc -o $@ $^ $(CFLAGS)
+
+test/test_fmt: test/test_fmt.c $(TEST_COMMON)
+	cc -o $@ $^ $(CFLAGS)
+
+test: $(TEST_BINS)
+	@echo "=== Unit Tests ==="
+	@for t in $(TEST_BINS); do echo "--- $$t ---"; ./$$t || exit 1; done
+	@echo ""
+	@echo "=== Integration Tests ==="
+	@sh test/integration.sh
+
+test-clean:
+	-rm -f $(TEST_BINS)
