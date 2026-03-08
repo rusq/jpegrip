@@ -89,7 +89,7 @@ int run(const char *filename) {
 	llog("Ripping file: %s...\n", filename);
 	if ((f = fopen(filename, "rb")) == 0) {
 		perror("error opening input file");
-		return 0;
+		return -1;
 	}
 	num_files = rip_jpeg(f);
 	if (num_files == -1) {

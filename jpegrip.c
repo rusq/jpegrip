@@ -92,13 +92,12 @@ long search_file(FILE *hFile, long start_pos, const unsigned char *seq, const si
 		int file_pos = ftell(hFile);
 
 		if ((bytes_read = fread(buf, sizeof(unsigned char), BUF_SIZE, hFile)) == 0) {
-			if (feof(hFile) || (bytes_read < seq_sz)) {
-				free(buf);
-				return EOF;
-			} else {
+			if (ferror(hFile)) {
 				perror("search_file:  read error");
 				goto looser;
 			}
+			free(buf);
+			return EOF;
 		}
 
 		buf_offset = search_buf(buf, bytes_read, seq, seq_sz);
@@ -230,8 +229,8 @@ int rip_jpeg(FILE *hFile) {
 
 	for (;;) {
 		char output_name[MAX_FNAME];
-		int output_file_sz = 0;
-		int hdr_sz = 0;
+		long output_file_sz = 0;
+		long hdr_sz = 0;
 
 		/* search for start */
 		blob_start = search_file(hFile, blob_end, jpeg_begin, sizeof(jpeg_begin));
@@ -258,7 +257,7 @@ int rip_jpeg(FILE *hFile) {
 		if (blob_end == ERROR) {
 			perror("rip_jpeg: search for jpeg end");
 			return -1;
-		} else if (blob_start == EOF) {
+		} else if (blob_end == EOF) {
 			llog("search terminated prematurely (found start at %ld, but no end)\n");
 			return num_files;
 		}
